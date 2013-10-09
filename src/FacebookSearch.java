@@ -22,7 +22,7 @@ public class FacebookSearch {
 	private final String MY_APP_ID = "597537903622855";
 	private final String MY_APP_SECRET = "5819eb4347788ca91fcfcc067fb6d37e";
 	//private final AccessToken accessToken = new DefaultFacebookClient().obtainAppAccessToken(MY_APP_ID, MY_APP_SECRET);
-	private final String MY_AUTH_TOKEN = "CAACEdEose0cBAPnbxt99BUruj3ZCCwYldtHGogAVbxxHmEqCI010zM0y7j3RBt1vufl1gZCzvAkye2C40ouSZBRhLlqquWSiGE0hePZC8ngJo85aj2I9ZAMo872ZAtieJqRWjOQZBr6HLQv3Gh4LdGymAVF4OKtgAtlEZB22ZAwRcGIeBows5zRw7dBe3TSEFZACfc5kO2ojH0UQZDZD";
+	private final String MY_AUTH_TOKEN = "CAACEdEose0cBANZAYtESqf6K3ZCTPWgmbxJ3ZBlZCn9jqx9KO2o5SW01kuysfUbFQFW91RMyUUPV6A1zvenAZBgvskGot2t54qltXZBBlawVgrAGNFLeDVRkUgOcvHhEG3AtZBEZA8QWgJA7Cda8ZAl6yF2XlANZCz0fMFDZBSwA7ewXZAhZB1CwNAcv0XRpvtLr4bkqxojj1ss2X7wZDZD";
 	private int numFriends;
 	private boolean verbose = false;
 	private double totOutputs;
@@ -315,6 +315,7 @@ public class FacebookSearch {
 		//testInsightsFetch();
 		//search("haters", 10);
 		mostMutualFriends();
+		System.out.println("Hi Kenny");
 	}
 	
 	public static void main(String[] args) {
