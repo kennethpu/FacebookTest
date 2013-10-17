@@ -20,7 +20,7 @@ public class FacebookSearch {
 
 	// Authorization Token - must be updated or program won't have permissions 
 	// to perform queries
-	private final String MY_AUTH_TOKEN = "CAACEdEose0cBAClRGlPzOgOCKRPqC1i8R2Su2Em0vH0kKWizDaiqbLg3YJ7JZBdChI9yNG5A1y31tEAWZC578tfNfuCcWBJcmKz0Kyb8NUPha9oq0505zyZCv5ddNqQGBjDVnUEYHs0KNePFXVZBuZCcz97mCuk7hy9A3liZBVyQNSmnGP14yciFWLBlR0ccrEpUbSsVaWPgZDZD";
+	private final String MY_AUTH_TOKEN = "CAACEdEose0cBAK81mXptIBM0DcEniUPr259LPspZCwZB7fG9h4W3bw4Ib6vk15fbytKljxg9CQemv8o6aDoCJYThUjjdOyq8RdRQzEjxnJWtOMrypkjzec4cZBZB2HI8a5DmkAiUX3VnvzyZAL2tPcBNkeugZAM1mMF7sZCgHz6iC2EH4DJnMl5AxxC9M4islLsV1L4mcksxQZDZD";
 	
 	// restFB stuff to perform actual facebook queries
 	private FacebookClient facebookClient;
@@ -311,7 +311,7 @@ public class FacebookSearch {
 	 */
 	public static void main(String[] args) {
 		FacebookSearch fbSearch = new FacebookSearch();
-		fbSearch.mostMutualFriends(10);
+		fbSearch.mostMutualFriends(0);
 	}
 	
 /**
