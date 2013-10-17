@@ -14,13 +14,14 @@ import com.restfb.Parameter;
 import com.restfb.batch.BatchRequest;
 import com.restfb.batch.BatchRequest.BatchRequestBuilder;
 import com.restfb.batch.BatchResponse;
+import com.restfb.exception.FacebookOAuthException;
 import com.restfb.types.*;
 
 public class FacebookSearch {
 
 	// Authorization Token - must be updated or program won't have permissions 
 	// to perform queries
-	private final String MY_AUTH_TOKEN = "CAACEdEose0cBAK81mXptIBM0DcEniUPr259LPspZCwZB7fG9h4W3bw4Ib6vk15fbytKljxg9CQemv8o6aDoCJYThUjjdOyq8RdRQzEjxnJWtOMrypkjzec4cZBZB2HI8a5DmkAiUX3VnvzyZAL2tPcBNkeugZAM1mMF7sZCgHz6iC2EH4DJnMl5AxxC9M4islLsV1L4mcksxQZDZD";
+	private final String MY_AUTH_TOKEN = "CAACEdEose0cBAENWcgfJJSBkrphPZBvCZAeyo4AmZAgdG03eVF5Y98HjkEgBCMxkyHNZAMw06yZASL1HQuGl8mgFZCTIgfGimvo3G8jGxqXwkSVKefhoshKckqQucBJ79MbLbKv7tDrYJUeBAfLwc7AR2pEFtp1rAVmwRPLzT5UrNdaKDrzanhC1bOVKc5BFIJeHyfixzMbwZDZD";
 	
 	// restFB stuff to perform actual facebook queries
 	private FacebookClient facebookClient;
@@ -31,7 +32,7 @@ public class FacebookSearch {
 	// Variables for debug outputs
 	// NOTE: by default, program outputs percentage toward completion. 
 	//       Set verbose = true for more specific print statements
-	private boolean verbose = false; 
+	private boolean verbose = true; 
 	private double totOutputs;
 	private int outputCount;
 
@@ -57,6 +58,10 @@ public class FacebookSearch {
 	private void mostMutualFriends(int maxn) {
 		long start = System.currentTimeMillis();
 		
+		System.out.println("#===========================================================");
+		System.out.printf("# mostMutualFriends() : %s\n", (maxn <= 0) ? "ALL" : "TOP " + maxn);
+		System.out.println("#===========================================================");
+		
 		// Get friends data
 		Connection<User> myFriends = getFriends();
 		numFriends = myFriends.getData().size();
@@ -72,10 +77,11 @@ public class FacebookSearch {
 		
 		// Print statements for debugging purposes
 		if (!verbose) {
-			totOutputs = Math.ceil(numFriends/50.0)*6;
+			totOutputs = Math.ceil(numFriends/50.0)*2;
 			outputCount = 0;
+		} else {
+			System.out.println("Friend Count: " + numFriends);
 		}
-		System.out.println("Friend Count: " + numFriends);
 		
 		// Spawn the required number of threads to execute all batch requests 
 		// in parallel
@@ -84,6 +90,7 @@ public class FacebookSearch {
 			BatchExecutor b = new BatchExecutor(myFriends.getData(), i, topFriends);
 			b.start();
 			threads.add(b);
+			if (!verbose) System.out.printf("Executing...[%05.2f%%]\n", ++outputCount*100.0/totOutputs);
 		}
 		
 		// Wait for all batch request threads to finish executing 
@@ -91,6 +98,7 @@ public class FacebookSearch {
 			try {
 				b.join();
 			} catch (InterruptedException e) {}
+			if (!verbose) System.out.printf("Executing...[%05.2f%%]\n", ++outputCount*100.0/totOutputs);
 		}
 		
 		// Output sorted list
@@ -109,100 +117,6 @@ public class FacebookSearch {
 	 */
 	private Connection<User> getFriends() {
 		return facebookClient.fetchConnection("me/friends", User.class);
-	}
-	
-	/**
-	 * Builds a batch request for mutual friends from a given list of facebook 
-	 * friends 
-	 * 
-	 * Parameters:
-	 *   - users : list of friends
-	 *   - start : start index within full friend list [FOR DEBUGGING]
-	 *   - end   : end index within full friend list [FOR DEBUGGING]
-	 * 
-	 * Returns:
-	 *   - List of BatchRequests to execute
-	 */
-	private List<BatchRequest> buildUserBatchRequest(List<User> users, int start, int end) throws Exception {
-		// Print statements for debugging purposes
-		if (verbose) {
-			System.out.printf("Building batch request[%03d-%03d]...\n", start, end);
-		} else {
-			synchronized(this) {
-				System.out.printf("Executing...[%05.2f%%]\n", ++outputCount*100.0/totOutputs);
-			}
-		}
-		
-		// Initialize data structure for storing BatchRequests
-		List<BatchRequest> batchRequests = new ArrayList<BatchRequest>();
-		
-		// Check that batch is not too large
-		int batchSize = users.size();
-		if (batchSize > 50) {
-			throw new Exception("Too many requests, maximum batch size is 50.");
-		}
-		
-		// Build BatchRequests and add them to list
-		for (int i = 0; i < batchSize; i++) {
-			BatchRequest request = new BatchRequestBuilder("me/mutualfriends/"+users.get(i).getId()).build();
-			batchRequests.add(request);
-		}
-		
-		// Print statements for debugging purposes
-		if (verbose) {
-			System.out.printf("Building batch request[%03d-%03d]...DONE\n", start, end);
-		} else {
-			synchronized(this) {
-				System.out.printf("Executing...[%05.2f%%]\n", ++outputCount*100.0/totOutputs);
-			}
-		}
-		
-		return batchRequests;
-	}
-	
-	/**
-	 * Processes batch responses received from facebook and adds them to 
-	 * a given set
-	 * 
-	 * Parameters:
-	 *   - bachResponses : batch responses received from facebook
-	 *   - friends       : list of friends
-	 *   - friendSet     : set containing friend entries 
-	 *   - start         : start index within full friend list [FOR DEBUGGING]
-	 *   - end           : end index within full friend list [FOR DEBUGGING]
-	 */
-	private void processUserBatchResponse(List<BatchResponse> batchResponses, List<User> friends, SortedSet<Friend> friendSet, int start, int end) {
-		// Print statements for debugging purposes
-		if (verbose) {
-			System.out.printf("Processing batch response[%03d-%03d]...\n", start, end);
-		} else {
-			synchronized(this) {
-				System.out.printf("Executing...[%05.2f%%]\n", ++outputCount*100.0/totOutputs);
-			}
-		}
-		
-		// Process batch responses
-		BatchResponse fResponse;
-		int batchSize = batchResponses.size();
-		for (int i=0; i<batchSize; i++) {
-			fResponse = batchResponses.get(i);
-			if (fResponse.getCode() != 200) {
-				System.out.println("ERROR: Batch request failed: " + fResponse);
-				continue;
-			}
-			Connection<User> mutualFriends = 
-					new Connection<User>(facebookClient, fResponse.getBody(), User.class);
-			friendSet.add(new Friend(friends.get(i).getName(), mutualFriends.getData().size()));
-		}
-		
-		// Print statements for debugging purposes
-		if (verbose) {
-			System.out.printf("Processing batch response[%03d-%03d]...DONE\n", start, end);
-		} else {
-			synchronized(this) {
-				System.out.printf("Executing...[%05.2f%%]\n", ++outputCount*100.0/totOutputs);
-			}
-		}	
 	}
 	
 	/**
@@ -279,31 +193,90 @@ public class FacebookSearch {
 			}
 			
 			// Print statements for debugging purposes
-			if (verbose) {
-				System.out.printf("Executing batch request[%03d-%03d]...\n", startIndex, endIndex);
-			} else {
-				synchronized(this) {
-					System.out.printf("Executing...[%05.2f%%]\n", ++outputCount*100.0/totOutputs);
-				}
-			}
+			if (verbose) System.out.printf("[%03d-%03d]Executing batch request...\n", startIndex, endIndex);
 			
 			// Execute batch request
 			List<BatchResponse> batchResponses =
 					  facebookClient.executeBatch((BatchRequest[]) batchList.toArray(new BatchRequest[0]));
 			
 			// Print statements for debugging purposes
-			if (verbose) {
-				System.out.printf("Executing batch request[%03d-%03d]...DONE\n", startIndex, endIndex);
-			} else {
-				synchronized(this) {
-					System.out.printf("Executing...[%05.2f%%]\n", ++outputCount*100.0/totOutputs);
-				}
-			}
+			if (verbose) System.out.printf("[%03d-%03d]Executing batch request...DONE\n", startIndex, endIndex);
 			
 			// Process batch responses
 			processUserBatchResponse(batchResponses, users.subList(startIndex,endIndex), topFriends, startIndex, endIndex);			
 		}
 		
+		/**
+		 * Builds a batch request for mutual friends from a given list of facebook 
+		 * friends 
+		 * 
+		 * Parameters:
+		 *   - users : list of friends
+		 *   - start : start index within full friend list [FOR DEBUGGING]
+		 *   - end   : end index within full friend list [FOR DEBUGGING]
+		 *  
+		 * Returns:
+		 *   - List of BatchRequests to execute
+		 */
+		private List<BatchRequest> buildUserBatchRequest(List<User> users, int start, int end) throws Exception {
+			// Print statements for debugging purposes
+			if (verbose) {
+				System.out.printf("[%03d-%03d]Building batch request...\n", start, end);
+			}
+			
+			// Initialize data structure for storing BatchRequests
+			List<BatchRequest> batchRequests = new ArrayList<BatchRequest>();
+			
+			// Check that batch is not too large
+			int batchSize = users.size();
+			if (batchSize > 50) {
+				throw new Exception("Too many requests, maximum batch size is 50.");
+			}
+			
+			// Build BatchRequests and add them to list
+			for (int i = 0; i < batchSize; i++) {
+				BatchRequest request = new BatchRequestBuilder("me/mutualfriends/"+users.get(i).getId()).build();
+				batchRequests.add(request);
+			}
+			
+			// Print statements for debugging purposes
+			if (verbose) System.out.printf("[%03d-%03d]Building batch request...DONE\n", start, end);
+			
+			return batchRequests;
+		}
+		
+		/**
+		 * Processes batch responses received from facebook and adds them to 
+		 * a given set
+		 * 
+		 * Parameters:
+		 *   - bachResponses : batch responses received from facebook
+		 *   - friends       : list of friends
+		 *   - friendSet     : set containing friend entries 
+		 *   - start         : start index within full friend list [FOR DEBUGGING]
+		 *   - end           : end index within full friend list [FOR DEBUGGING]
+		 */
+		private void processUserBatchResponse(List<BatchResponse> batchResponses, List<User> friends, SortedSet<Friend> friendSet, int start, int end) {
+			// Print statements for debugging purposes
+			if (verbose) System.out.printf("[%03d-%03d]Processing batch response...\n", start, end);
+			
+			// Process batch responses
+			BatchResponse fResponse;
+			int batchSize = batchResponses.size();
+			for (int i=0; i<batchSize; i++) {
+				fResponse = batchResponses.get(i);
+				if (fResponse.getCode() != 200) {
+					System.out.println("ERROR: Batch request failed: " + fResponse);
+					continue;
+				}
+				Connection<User> mutualFriends = 
+						new Connection<User>(facebookClient, fResponse.getBody(), User.class);
+				friendSet.add(new Friend(friends.get(i).getName(), mutualFriends.getData().size()));
+			}
+			
+			// Print statements for debugging purposes
+			if (verbose) System.out.printf("[%03d-%03d]Processing batch response...DONE\n", start, end);
+		}
 	}
 	
 	/**
@@ -311,7 +284,11 @@ public class FacebookSearch {
 	 */
 	public static void main(String[] args) {
 		FacebookSearch fbSearch = new FacebookSearch();
-		fbSearch.mostMutualFriends(0);
+		try { 
+			fbSearch.mostMutualFriends(0);
+		} catch (FacebookOAuthException e) {
+			System.out.println("ERROR: Authorization Token expired! Must request new token.");
+		}
 	}
 	
 /**
