@@ -21,7 +21,7 @@ public class FacebookSearch {
 
 	// Authorization Token - must be updated or program won't have permissions 
 	// to perform queries
-	private final String MY_AUTH_TOKEN = "CAACEdEose0cBAENWcgfJJSBkrphPZBvCZAeyo4AmZAgdG03eVF5Y98HjkEgBCMxkyHNZAMw06yZASL1HQuGl8mgFZCTIgfGimvo3G8jGxqXwkSVKefhoshKckqQucBJ79MbLbKv7tDrYJUeBAfLwc7AR2pEFtp1rAVmwRPLzT5UrNdaKDrzanhC1bOVKc5BFIJeHyfixzMbwZDZD";
+	private final String MY_AUTH_TOKEN = "CAACEdEose0cBAMlxVenBcLNLxoxizQC8ZCbtjbMXkAWw0zuctTZBlAAM5ZAxkFtbuGPCMNdQLKkRd6bQyZBjURIambIXQSuIWAQ8nlDV9B4knNKZAynWR2iyJKmZAnqlhWAVPjUTY1xfs22zdBJ49roXJZAgftdxI6sLq5UdZBNzkNEFuJjg9KtZAbaZBaUWPgYcMHtqXZCE5QiZBwZDZD";
 	
 	// restFB stuff to perform actual facebook queries
 	private FacebookClient facebookClient;
@@ -32,7 +32,7 @@ public class FacebookSearch {
 	// Variables for debug outputs
 	// NOTE: by default, program outputs percentage toward completion. 
 	//       Set verbose = true for more specific print statements
-	private boolean verbose = true; 
+	private boolean verbose = false; 
 	private double totOutputs;
 	private int outputCount;
 
@@ -42,7 +42,43 @@ public class FacebookSearch {
 	public FacebookSearch() {
 		facebookClient = new DefaultFacebookClient(MY_AUTH_TOKEN);
 	}
-
+	
+	/**
+	 * Outputs a list of facebook friends and their associated educational history
+	 * 
+	 * Required Permissions:
+	 *   - user_friends
+	 *   - friends_education_history
+	 */
+	private void getFriendEducation() {
+		long start = System.currentTimeMillis();
+		
+		System.out.println("#===========================================================");
+		System.out.println("# getFriendEducation()");
+		System.out.println("#===========================================================");
+		
+		// Get friends data
+		Connection<User> myFriends = facebookClient.fetchConnection("me/friends", User.class, Parameter.with("fields", "name, education"));
+		numFriends = myFriends.getData().size();
+		
+		// Print statements for debugging purposes
+		System.out.println("Friend Count: " + numFriends);
+		
+		int i = 0;
+		for (User f : myFriends.getData()) {
+			i++;
+			System.out.printf("[%-3d] %-30s\n", i, f.getName());
+			for (User.Education edu : f.getEducation()) {
+				System.out.printf("  - [%15s] %-40s\n", edu.getType(), edu.getSchool().getName());
+			}
+			System.out.println();
+		}
+		
+		long end = System.currentTimeMillis();
+		long duration = (end-start)/1000;
+		System.out.printf("Duration: %ds\n", duration);
+	}
+	
 	/**
 	 * Outputs a list of facebook friends sorted by number of mutual friends 
 	 * 
@@ -79,9 +115,8 @@ public class FacebookSearch {
 		if (!verbose) {
 			totOutputs = Math.ceil(numFriends/50.0)*2;
 			outputCount = 0;
-		} else {
-			System.out.println("Friend Count: " + numFriends);
-		}
+		} 
+		System.out.println("Friend Count: " + numFriends);
 		
 		// Spawn the required number of threads to execute all batch requests 
 		// in parallel
@@ -152,6 +187,19 @@ public class FacebookSearch {
 			if (i > maxn) break;
 			
 			System.out.printf("[%-3d] %-30s MutualFriends: %s\n", i, f.name, f.mutualFriends);
+		}
+	}
+	
+	/**
+	 * Program Entry Point
+	 */
+	public static void main(String[] args) {
+		FacebookSearch fbSearch = new FacebookSearch();
+		try { 
+			//fbSearch.mostMutualFriends(0);
+			fbSearch.getFriendEducation();
+		} catch (FacebookOAuthException e) {
+			System.out.println("ERROR: Authorization Token expired! Must request new token.");
 		}
 	}
 	
@@ -280,18 +328,6 @@ public class FacebookSearch {
 	}
 	
 	/**
-	 * Program Entry Point
-	 */
-	public static void main(String[] args) {
-		FacebookSearch fbSearch = new FacebookSearch();
-		try { 
-			fbSearch.mostMutualFriends(0);
-		} catch (FacebookOAuthException e) {
-			System.out.println("ERROR: Authorization Token expired! Must request new token.");
-		}
-	}
-	
-/**
 	private void testSingleObjectFetch() {
 		System.out.println("#=================================================");
 		System.out.println("# Testing single object fetch...");
