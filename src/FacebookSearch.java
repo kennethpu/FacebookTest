@@ -21,7 +21,7 @@ public class FacebookSearch {
 
 	// Authorization Token - must be updated or program won't have permissions 
 	// to perform queries
-	private final String MY_AUTH_TOKEN = "CAACEdEose0cBAMlxVenBcLNLxoxizQC8ZCbtjbMXkAWw0zuctTZBlAAM5ZAxkFtbuGPCMNdQLKkRd6bQyZBjURIambIXQSuIWAQ8nlDV9B4knNKZAynWR2iyJKmZAnqlhWAVPjUTY1xfs22zdBJ49roXJZAgftdxI6sLq5UdZBNzkNEFuJjg9KtZAbaZBaUWPgYcMHtqXZCE5QiZBwZDZD";
+	private final String MY_AUTH_TOKEN = "CAACEdEose0cBANdvXpgOQtRPv3UzPs0yPkuQ7ZBMuZBd0CaMka47ZALZAEoRsnV6kHYCixCa1ZBqo7UyRoM13AbkXGQ8uW7MX3ywzEHxZAulf5DzhlSuzd9Y23wD5qWLRFsth9dGdTT8QkEsFFZCzZAZAoYMutWjehnpqe0HRsk0EcDu0zcA3gDe5JybUbGZCnnPr0OPHYL55xeAZDZD";
 	
 	// restFB stuff to perform actual facebook queries
 	private FacebookClient facebookClient;
@@ -41,6 +41,63 @@ public class FacebookSearch {
 	 */
 	public FacebookSearch() {
 		facebookClient = new DefaultFacebookClient(MY_AUTH_TOKEN);
+	}
+	
+	/**
+	 * Outputs a list of facebook friends and their most recent facebook 
+	 * statuses, excluding null statuses, links, and statuses with more than
+	 * two lines
+	 * 
+	 * Parameters:
+	 *   - num_statuses : number of statuses to show per user 
+	 *
+	 * Required Permissions:
+	 *   - user_friends
+	 *   - friends_status
+	 *   - read_stream
+	 */
+	private void getFriendStatuses(int num_statuses) {
+		long start = System.currentTimeMillis();
+		
+		System.out.println("#===========================================================");
+		System.out.println("# getFriendStatuses()");
+		System.out.println("#===========================================================");
+		
+		if (num_statuses <= 0) num_statuses = Integer.MAX_VALUE;
+		
+		// Get friends data
+		Connection<User> myFriends = facebookClient.fetchConnection("me/friends", User.class);
+		numFriends = myFriends.getData().size();
+		
+		// Print statements for debugging purposes
+		System.out.println("Friend Count: " + numFriends);
+		
+		int i = 0;
+		int j;
+		for (User f : myFriends.getData()) {
+			Connection<StatusMessage> statuses = facebookClient.fetchConnection(f.getId()+"/statuses", StatusMessage.class);
+			if (statuses.getData().size() == 0) continue;
+			i++;
+			System.out.printf("[%-3d] %-30s\n", i, f.getName());
+			j = 1;
+			for (List<StatusMessage> status_list : statuses) {
+				for (StatusMessage status : status_list) {
+					String message = status.getMessage();
+					if ((message == null) || (message.indexOf("http") != -1) || (message.split("\r\n|\r|\n").length > 2) ) {
+						continue;
+					}
+					System.out.println("Status: " + message);
+					j++;
+					if (j > num_statuses) break;
+				}
+				if (j > num_statuses) break;
+			}
+			System.out.println();
+		}
+		
+		long end = System.currentTimeMillis();
+		long duration = (end-start)/1000;
+		System.out.printf("Duration: %ds\n", duration);
 	}
 	
 	/**
@@ -197,7 +254,8 @@ public class FacebookSearch {
 		FacebookSearch fbSearch = new FacebookSearch();
 		try { 
 			//fbSearch.mostMutualFriends(0);
-			fbSearch.getFriendEducation();
+			//fbSearch.getFriendEducation();
+			fbSearch.getFriendStatuses(3);
 		} catch (FacebookOAuthException e) {
 			System.out.println("ERROR: Authorization Token expired! Must request new token.");
 		}
