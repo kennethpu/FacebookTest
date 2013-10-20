@@ -21,7 +21,7 @@ public class FacebookSearch {
 
 	// Authorization Token - must be updated or program won't have permissions 
 	// to perform queries
-	private final String MY_AUTH_TOKEN = "CAACEdEose0cBANdvXpgOQtRPv3UzPs0yPkuQ7ZBMuZBd0CaMka47ZALZAEoRsnV6kHYCixCa1ZBqo7UyRoM13AbkXGQ8uW7MX3ywzEHxZAulf5DzhlSuzd9Y23wD5qWLRFsth9dGdTT8QkEsFFZCzZAZAoYMutWjehnpqe0HRsk0EcDu0zcA3gDe5JybUbGZCnnPr0OPHYL55xeAZDZD";
+	private final String MY_AUTH_TOKEN = "CAACEdEose0cBALxW9aMZA4Ulv7U99J8rh1NbQlENZAXH8R0DdGswKsCyiwxj4MXgqIYsRaXLAQNFXMAoaC7u48Is2oVr08ZAZBZCAWaCahVERcXSkFj5ytgFPrSj1uRfXTekPTq3fiAJOqV57ZAeqBSRN02QewHPOfMZBF4STwwMXiZCj9hYGjXat2Y1xxKOJo38jEbXQRQXLAZDZD";
 	
 	// restFB stuff to perform actual facebook queries
 	private FacebookClient facebookClient;
@@ -44,6 +44,89 @@ public class FacebookSearch {
 	}
 	
 	/**
+	 * Outputs a list of facebook friends and their corresponding location
+	 * history, including hometown and current location if available
+	 *
+	 * Required Permissions:
+	 *   - user_friends
+	 *   - friends_status
+	 *   - friends_hometown
+	 *   - friends_location
+	 */
+	private void getLocationHistory() {
+		long start = System.currentTimeMillis();
+		
+		System.out.println("#===========================================================");
+		System.out.println("# getLocationHistory()");
+		System.out.println("#===========================================================");
+		
+		// Get friends data
+		Connection<User> myFriends = facebookClient.fetchConnection("me/friends", User.class, Parameter.with("fields", "name, id, hometown, location"));
+		numFriends = myFriends.getData().size();
+		
+		// Print statements for debugging purposes
+		System.out.println("Friend Count: " + numFriends);
+				
+		// Iterate through friends, outputting their location history
+		int i = 0;
+		for (User f : myFriends.getData()) {
+			
+			// Get friend's checkins
+			Connection<Checkin> checkins = facebookClient.fetchConnection(f.getId()+"/locations", Checkin.class);
+			
+			// If friend has no relevant data (no hometown, current location, or checkins) skip
+			if (checkins.getData().size() == 0 && f.getLocation() == null && f.getHometown() == null) continue;
+			
+			i++;
+			System.out.printf("[%-3d] %-30s\n", i, f.getName());
+			
+			// Print friend's current location or 'unknown' if not found
+			String curLocation = (f.getLocation() != null) ? f.getLocation().getName() : "unknown";
+			System.out.printf("  [Current] %s\n", curLocation);
+			
+			// List of previously accessed Checkin lists (to address an issue 
+			// where fetch would occasionally loop infinitely through the lists
+			List<List<Checkin>> prev_checkins_list = new ArrayList<List<Checkin>>();
+			
+			// Print friend's checkin history
+			for (List<Checkin> checkins_list : checkins) {
+				// If accessing a Checkin list that has previously been 
+				// checked, skip
+				if (prev_checkins_list.contains(checkins_list)) break;
+				prev_checkins_list.add(checkins_list);
+				
+				for (Checkin checkin : checkins_list) {
+					// If Checkin's corresponding place or location is null, skip
+					if (checkin.getPlace() == null || checkin.getPlace().getLocation() == null) continue;
+				
+					// Get relevant location and time strings
+					Location location = checkin.getPlace().getLocation();
+					String place = checkin.getPlace().getName();
+					String city = (location.getCity() != null && !location.getCity().equals("")) ? " " + location.getCity() : "";
+					String state = (location.getState() != null && !location.getState().equals("")) ? " " + location.getState() : "";
+					String country = location.getCountry();
+					String time = (checkin.getCreatedTime() != null) ? checkin.getCreatedTime().toString() : "unknown";
+					
+					// Skip if country is null
+					if (country == null) continue;
+				
+					// Output Checkin data
+					System.out.printf("  [%s] %s%s%s %s\n", time, place, city, state, country);
+				}
+			}
+			
+			// Print friend's hometown or 'unknown' if not found
+			String hometown = (f.getHometown() != null) ? f.getHometown().getName() : "unknown";
+			System.out.printf("  [Hometown] %s\n", hometown);
+			System.out.println();
+		}
+		
+		long end = System.currentTimeMillis();
+		long duration = (end-start)/1000;
+		System.out.printf("Duration: %ds\n", duration);
+	}
+	
+	/**
 	 * Outputs a list of facebook friends and their most recent facebook 
 	 * statuses, excluding null statuses, links, and statuses with more than
 	 * two lines
@@ -63,6 +146,7 @@ public class FacebookSearch {
 		System.out.println("# getFriendStatuses()");
 		System.out.println("#===========================================================");
 		
+		// if num_statuses <= 0, output ALL statuses
 		if (num_statuses <= 0) num_statuses = Integer.MAX_VALUE;
 		
 		// Get friends data
@@ -72,24 +156,39 @@ public class FacebookSearch {
 		// Print statements for debugging purposes
 		System.out.println("Friend Count: " + numFriends);
 		
+		// Iterate through friends, outputting their facebook statuses
 		int i = 0;
 		int j;
 		for (User f : myFriends.getData()) {
+			// Get friends statuses
 			Connection<StatusMessage> statuses = facebookClient.fetchConnection(f.getId()+"/statuses", StatusMessage.class);
+			
+			// If status data is empty, skip friend
 			if (statuses.getData().size() == 0) continue;
+			
+			// Output up to <num_statuses> statuses for current friend
 			i++;
 			System.out.printf("[%-3d] %-30s\n", i, f.getName());
 			j = 1;
 			for (List<StatusMessage> status_list : statuses) {
 				for (StatusMessage status : status_list) {
 					String message = status.getMessage();
+					// Skip status message if: 
+					//   1) message is null
+					//   2) message contains a link (http)
+					//   3) message contains more than 2 lines
 					if ((message == null) || (message.indexOf("http") != -1) || (message.split("\r\n|\r|\n").length > 2) ) {
 						continue;
 					}
 					System.out.println("Status: " + message);
 					j++;
+					
+					// Break out of loop if the number of statuses printed
+					// is greater than num_statuses
 					if (j > num_statuses) break;
 				}
+				// Break out of loop if the number of statuses printed
+				// is greater than num_statuses
 				if (j > num_statuses) break;
 			}
 			System.out.println();
@@ -255,7 +354,8 @@ public class FacebookSearch {
 		try { 
 			//fbSearch.mostMutualFriends(0);
 			//fbSearch.getFriendEducation();
-			fbSearch.getFriendStatuses(3);
+			//fbSearch.getFriendStatuses(3);
+			fbSearch.getLocationHistory();
 		} catch (FacebookOAuthException e) {
 			System.out.println("ERROR: Authorization Token expired! Must request new token.");
 		}
