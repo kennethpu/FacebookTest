@@ -1,6 +1,7 @@
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.Date;
 import java.util.Iterator;
 import java.util.List;
 import java.util.SortedSet;
@@ -21,7 +22,7 @@ public class FacebookSearch {
 
 	// Authorization Token - must be updated or program won't have permissions 
 	// to perform queries
-	private final String MY_AUTH_TOKEN = "CAACEdEose0cBALxW9aMZA4Ulv7U99J8rh1NbQlENZAXH8R0DdGswKsCyiwxj4MXgqIYsRaXLAQNFXMAoaC7u48Is2oVr08ZAZBZCAWaCahVERcXSkFj5ytgFPrSj1uRfXTekPTq3fiAJOqV57ZAeqBSRN02QewHPOfMZBF4STwwMXiZCj9hYGjXat2Y1xxKOJo38jEbXQRQXLAZDZD";
+	private final String MY_AUTH_TOKEN = "CAACEdEose0cBAAXjfJBW2joGRgrDcXSjT1a44VKsHwoP6NrpMoLMozY9BILjYATgUK5PLjRZBZAcHNGekWRTVennzHwlOhGDUa1tIFqk3R4HIuz9h3vegBZBFBIEUUh4y36l9QhaxZB5ORkpOZAifrOPo1wqQZAQXcYXpNc91HH8f6ZButOjHS4FGBddrEimxNwEPj9tWqVswZDZD";
 	
 	// restFB stuff to perform actual facebook queries
 	private FacebookClient facebookClient;
@@ -50,6 +51,7 @@ public class FacebookSearch {
 	 * Required Permissions:
 	 *   - user_friends
 	 *   - friends_status
+	 *   - friends_photos
 	 *   - friends_hometown
 	 *   - friends_location
 	 */
@@ -73,12 +75,23 @@ public class FacebookSearch {
 			
 			// Get friend's checkins
 			Connection<Checkin> checkins = facebookClient.fetchConnection(f.getId()+"/locations", Checkin.class);
+
+			// Get friend's photos
+			Connection<Photo> photos = facebookClient.fetchConnection(f.getId()+"/photos", Photo.class);
 			
-			// If friend has no relevant data (no hometown, current location, or checkins) skip
-			if (checkins.getData().size() == 0 && f.getLocation() == null && f.getHometown() == null) continue;
+			// If friend has no relevant data (no hometown, current location, checkins, or photos) skip
+			if (checkins.getData().size() == 0 && f.getLocation() == null && f.getHometown() == null &&  photos.getData().size() == 0) continue;
 			
+			// Output friend name
 			i++;
 			System.out.printf("[%-3d] %-30s\n", i, f.getName());
+			
+			// Initialize sorted data structure for storing friend's location data
+			TreeSet<LocationEntry> treeSet = new TreeSet<LocationEntry>(new Comparator<LocationEntry>(){
+				public int compare(LocationEntry a, LocationEntry b) {
+					return (b.date.compareTo(a.date));
+				}
+			}); 
 			
 			// Print friend's current location or 'unknown' if not found
 			String curLocation = (f.getLocation() != null) ? f.getLocation().getName() : "unknown";
@@ -88,32 +101,52 @@ public class FacebookSearch {
 			// where fetch would occasionally loop infinitely through the lists
 			List<List<Checkin>> prev_checkins_list = new ArrayList<List<Checkin>>();
 			
-			// Print friend's checkin history
+			// Iterate through friend's checkins and add valid locations to set
 			for (List<Checkin> checkins_list : checkins) {
-				// If accessing a Checkin list that has previously been 
-				// checked, skip
+				// If accessing a Checkin list that has previously been checked, skip
 				if (prev_checkins_list.contains(checkins_list)) break;
 				prev_checkins_list.add(checkins_list);
 				
 				for (Checkin checkin : checkins_list) {
-					// If Checkin's corresponding place or location is null, skip
-					if (checkin.getPlace() == null || checkin.getPlace().getLocation() == null) continue;
-				
-					// Get relevant location and time strings
-					Location location = checkin.getPlace().getLocation();
-					String place = checkin.getPlace().getName();
-					String city = (location.getCity() != null && !location.getCity().equals("")) ? " " + location.getCity() : "";
-					String state = (location.getState() != null && !location.getState().equals("")) ? " " + location.getState() : "";
-					String country = location.getCountry();
-					String time = (checkin.getCreatedTime() != null) ? checkin.getCreatedTime().toString() : "unknown";
+					// If Checkin's corresponding place, location, or country is null, skip
+					if (checkin.getPlace() == null || checkin.getPlace().getLocation() == null || checkin.getPlace().getLocation().getCountry() == null) continue;
 					
-					// Skip if country is null
-					if (country == null) continue;
-				
-					// Output Checkin data
-					System.out.printf("  [%s] %s%s%s %s\n", time, place, city, state, country);
+					treeSet.add(new LocationEntry(checkin.getCreatedTime(), checkin.getPlace()));
 				}
 			}
+
+
+			// List of previously accessed Photo lists (to address an issue 
+			// where fetch would occasionally loop infinitely through the lists
+			List<List<Photo>> prev_photos_list = new ArrayList<List<Photo>>();
+				
+			// Iterate through friend's photos and add valid locations to set
+			for (List<Photo> photos_list : photos) {
+				// If accessing a Photo list that has previously been checked, skip
+				if (prev_checkins_list.contains(photos_list)) break;
+				prev_photos_list.add(photos_list);
+				
+				for (Photo photo : photos_list) {	
+					// If Photo's corresponding place, location, or country is null, skip
+					if (photo.getPlace() == null || photo.getPlace().getLocation() == null || photo.getPlace().getLocation().getCountry() == null) continue;
+					
+					treeSet.add(new LocationEntry(photo.getCreatedTime(), photo.getPlace()));
+				}
+			}			
+			
+			// Iterate through location set, outputting valid locations
+			Iterator<LocationEntry> locationItr = treeSet.iterator();
+			LocationEntry lastLoc = null; 
+			while(locationItr.hasNext()) {
+				LocationEntry l = locationItr.next();
+				
+				// If the current location is the same as the previous one and the
+				// associated time-stamp is within 1 hour of the previous, skip
+				if (lastLoc != null && (l.name.equals(lastLoc.name)) && ((lastLoc.date.getTime()-l.date.getTime()) < 60*60*1000)) continue;
+				lastLoc = l;
+				
+				System.out.printf("  [%s] %s%s%s %s\n", l.time, l.name, l.city, l.state, l.country);
+			} 
 			
 			// Print friend's hometown or 'unknown' if not found
 			String hometown = (f.getHometown() != null) ? f.getHometown().getName() : "unknown";
