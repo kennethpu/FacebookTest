@@ -22,7 +22,7 @@ public class FacebookSearch {
 
 	// Authorization Token - must be updated or program won't have permissions 
 	// to perform queries
-	private final String MY_AUTH_TOKEN = "CAACEdEose0cBAJrTR44Voa5oOakxskj7sZAoapH7hB75GxCmAOs4fF9pmZAZB8NT2DXgk1Eyd3FbIQJq20OHMcZAtVxkZANJBd5Jo8vrf6uDz5yWbmmfgEc9GrlTV2zVZATSpZBgfEPeYVFBIESbZBkUc9Vn3KgMnmZAa6j8biczjs1GkPQo7O6TMEZBEpsXJyZAr0ucUg2aMK9awZDZD";
+	private final String MY_AUTH_TOKEN = "CAACEdEose0cBALIR9ZCNj6G3pZAMqqtVHZBc30JJdLmIQOwRhbHzxkpzZBBjeE686Up1zRbpuB5izPSSj82WI9hTaeni1iFXie2ZADKVRZBzi3GM64JiGGS6EzIqw6bp0nBtNuqZB2ln9SwLv7qd81YlyQJsNHL91dCl4kWlUKXtMXg2y6hyjz9pvXyHM3LDnNETegqEmBnFAZDZD";
 	
 	// restFB stuff to perform actual facebook queries
 	private FacebookClient facebookClient;
@@ -86,11 +86,7 @@ public class FacebookSearch {
 			System.out.printf("[%-3d] %-30s\n", i, f.getName());
 			
 			// Initialize sorted data structure for storing friend's location data
-			TreeSet<LocationEntry> treeSet = new TreeSet<LocationEntry>(new Comparator<LocationEntry>(){
-				public int compare(LocationEntry a, LocationEntry b) {
-					return (b.date.compareTo(a.date));
-				}
-			}); 
+			TreeSet<LocationEntry> treeSet = new TreeSet(new LocationEntry());
 			
 			// Print friend's current location or 'unknown' if not found
 			String curLocation = (f.getLocation() != null) ? f.getLocation().getName() : "unknown";
@@ -385,9 +381,9 @@ public class FacebookSearch {
 		FacebookSearch fbSearch = new FacebookSearch();
 		try { 
 			//fbSearch.mostMutualFriends(0);
-			fbSearch.getFriendEducation();
+			//fbSearch.getFriendEducation();
 			//fbSearch.getFriendStatuses(3);
-			//fbSearch.getLocationHistory();
+			fbSearch.getLocationHistory();
 		} catch (FacebookOAuthException e) {
 			System.out.println("ERROR: Authorization Token expired! Must request new token.");
 		}
