@@ -22,7 +22,7 @@ public class FacebookSearch {
 
 	// Authorization Token - must be updated or program won't have permissions 
 	// to perform queries
-	private final String MY_AUTH_TOKEN = "CAACEdEose0cBAAXjfJBW2joGRgrDcXSjT1a44VKsHwoP6NrpMoLMozY9BILjYATgUK5PLjRZBZAcHNGekWRTVennzHwlOhGDUa1tIFqk3R4HIuz9h3vegBZBFBIEUUh4y36l9QhaxZB5ORkpOZAifrOPo1wqQZAQXcYXpNc91HH8f6ZButOjHS4FGBddrEimxNwEPj9tWqVswZDZD";
+	private final String MY_AUTH_TOKEN = "CAACEdEose0cBAJrTR44Voa5oOakxskj7sZAoapH7hB75GxCmAOs4fF9pmZAZB8NT2DXgk1Eyd3FbIQJq20OHMcZAtVxkZANJBd5Jo8vrf6uDz5yWbmmfgEc9GrlTV2zVZATSpZBgfEPeYVFBIESbZBkUc9Vn3KgMnmZAa6j8biczjs1GkPQo7O6TMEZBEpsXJyZAr0ucUg2aMK9awZDZD";
 	
 	// restFB stuff to perform actual facebook queries
 	private FacebookClient facebookClient;
@@ -57,7 +57,6 @@ public class FacebookSearch {
 	 */
 	private void getLocationHistory() {
 		long start = System.currentTimeMillis();
-		
 		System.out.println("#===========================================================");
 		System.out.println("# getLocationHistory()");
 		System.out.println("#===========================================================");
@@ -311,7 +310,7 @@ public class FacebookSearch {
 		// in parallel
 		List<BatchExecutor> threads = new ArrayList<BatchExecutor>();
 		for (int i=0; i<numFriends; i+=50) {
-			BatchExecutor b = new BatchExecutor(myFriends.getData(), i, topFriends);
+			BatchExecutor b = new BatchExecutor(myFriends.getData(), i, topFriends, numFriends, facebookClient);
 			b.start();
 			threads.add(b);
 			if (!verbose) System.out.printf("Executing...[%05.2f%%]\n", ++outputCount*100.0/totOutputs);
@@ -386,219 +385,14 @@ public class FacebookSearch {
 		FacebookSearch fbSearch = new FacebookSearch();
 		try { 
 			//fbSearch.mostMutualFriends(0);
-			//fbSearch.getFriendEducation();
+			fbSearch.getFriendEducation();
 			//fbSearch.getFriendStatuses(3);
-			fbSearch.getLocationHistory();
+			//fbSearch.getLocationHistory();
 		} catch (FacebookOAuthException e) {
 			System.out.println("ERROR: Authorization Token expired! Must request new token.");
 		}
 	}
 	
-	/** 
-	 * Inner class that builds and executes batch requests in parallel to 
-	 * help speed up pulling data from facebook
-	 */
-	class BatchExecutor extends Thread {
-		List<User> users;
-		int startIndex;
-		SortedSet<Friend> topFriends;
-		List<BatchRequest> batchList;
-		
-		/**
-		 * Default constructor
-		 * @param u : list of facebook friends 
-		 * @param s : start index within u to build batch from
-		 * @param tf : set of friends to store results in
-		 */
-		public BatchExecutor(List<User> u, int s, SortedSet<Friend> tf) {
-			users = u;
-			startIndex = s;
-			topFriends = tf;
-		}
-		
-		/**
-		 * Build and execute batch request, then process batch response
-		 */
-		public void run() {
-			// endIndex is either startIndex+50 or the end of the list
-			int endIndex = (numFriends-startIndex > 50) ? startIndex+50 : numFriends-1;
-			
-			// Build batch request
-			try {
-				batchList = buildUserBatchRequest(users.subList(startIndex,endIndex), startIndex, endIndex);
-			} catch (Exception e) {
-				System.out.println("ERROR: " + e.getMessage());
-				return;
-			}
-			
-			// Print statements for debugging purposes
-			if (verbose) System.out.printf("[%03d-%03d]Executing batch request...\n", startIndex, endIndex);
-			
-			// Execute batch request
-			List<BatchResponse> batchResponses =
-					  facebookClient.executeBatch((BatchRequest[]) batchList.toArray(new BatchRequest[0]));
-			
-			// Print statements for debugging purposes
-			if (verbose) System.out.printf("[%03d-%03d]Executing batch request...DONE\n", startIndex, endIndex);
-			
-			// Process batch responses
-			processUserBatchResponse(batchResponses, users.subList(startIndex,endIndex), topFriends, startIndex, endIndex);			
-		}
-		
-		/**
-		 * Builds a batch request for mutual friends from a given list of facebook 
-		 * friends 
-		 * 
-		 * Parameters:
-		 *   - users : list of friends
-		 *   - start : start index within full friend list [FOR DEBUGGING]
-		 *   - end   : end index within full friend list [FOR DEBUGGING]
-		 *  
-		 * Returns:
-		 *   - List of BatchRequests to execute
-		 */
-		private List<BatchRequest> buildUserBatchRequest(List<User> users, int start, int end) throws Exception {
-			// Print statements for debugging purposes
-			if (verbose) {
-				System.out.printf("[%03d-%03d]Building batch request...\n", start, end);
-			}
-			
-			// Initialize data structure for storing BatchRequests
-			List<BatchRequest> batchRequests = new ArrayList<BatchRequest>();
-			
-			// Check that batch is not too large
-			int batchSize = users.size();
-			if (batchSize > 50) {
-				throw new Exception("Too many requests, maximum batch size is 50.");
-			}
-			
-			// Build BatchRequests and add them to list
-			for (int i = 0; i < batchSize; i++) {
-				BatchRequest request = new BatchRequestBuilder("me/mutualfriends/"+users.get(i).getId()).build();
-				batchRequests.add(request);
-			}
-			
-			// Print statements for debugging purposes
-			if (verbose) System.out.printf("[%03d-%03d]Building batch request...DONE\n", start, end);
-			
-			return batchRequests;
-		}
-		
-		/**
-		 * Processes batch responses received from facebook and adds them to 
-		 * a given set
-		 * 
-		 * Parameters:
-		 *   - bachResponses : batch responses received from facebook
-		 *   - friends       : list of friends
-		 *   - friendSet     : set containing friend entries 
-		 *   - start         : start index within full friend list [FOR DEBUGGING]
-		 *   - end           : end index within full friend list [FOR DEBUGGING]
-		 */
-		private void processUserBatchResponse(List<BatchResponse> batchResponses, List<User> friends, SortedSet<Friend> friendSet, int start, int end) {
-			// Print statements for debugging purposes
-			if (verbose) System.out.printf("[%03d-%03d]Processing batch response...\n", start, end);
-			
-			// Process batch responses
-			BatchResponse fResponse;
-			int batchSize = batchResponses.size();
-			for (int i=0; i<batchSize; i++) {
-				fResponse = batchResponses.get(i);
-				if (fResponse.getCode() != 200) {
-					System.out.println("ERROR: Batch request failed: " + fResponse);
-					continue;
-				}
-				Connection<User> mutualFriends = 
-						new Connection<User>(facebookClient, fResponse.getBody(), User.class);
-				friendSet.add(new Friend(friends.get(i).getName(), mutualFriends.getData().size()));
-			}
-			
-			// Print statements for debugging purposes
-			if (verbose) System.out.printf("[%03d-%03d]Processing batch response...DONE\n", start, end);
-		}
-	}
 	
-	/**
-	private void testSingleObjectFetch() {
-		System.out.println("#=================================================");
-		System.out.println("# Testing single object fetch...");
-		System.out.println("#=================================================");
-		
-		User user = facebookClient.fetchObject("me", User.class);
-		Page page = facebookClient.fetchObject("cocacola", Page.class);
-		
-		System.out.println("User name: " + user.getName());
-		System.out.println("Page likes: " + page.getLikes());
-	}
-	
-	private void testMultipleObjectsFetch() {
-		System.out.println("#=================================================");
-		System.out.println("# Testing multiple objects fetch...");
-		System.out.println("#=================================================");
-		
-		FetchObjectsResults fetchObjectsResults = facebookClient.fetchObjects(Arrays.asList("me", "cocacola"), FetchObjectsResults.class);
-		System.out.println("User name: " + fetchObjectsResults.me.getName());
-		System.out.println("Page likes: " + fetchObjectsResults.page.getLikes());
-	}
-	
-	private void testConnectionsFetch() {
-		System.out.println("#=================================================");
-		System.out.println("# Testing connections fetch...");
-		System.out.println("#=================================================");
-		
-		Connection<User> myFriends = facebookClient.fetchConnection("me/friends", User.class);
-		Connection<Post> myFeed = facebookClient.fetchConnection("me/feed", Post.class);
-	
-		System.out.println("Count of my friends: " + myFriends.getData().size());
-		System.out.println("First item in my feed: " + myFeed.getData().get(0));
-		
-		for (List<Post> myFeedConnectionPage : myFeed) {
-			for (Post post : myFeedConnectionPage) {
-				System.out.println("Post: " + post);
-			}
-		}
-	}
-	
-	private void testSearch() {
-		System.out.println("#=================================================");
-		System.out.println("# Testing search...");
-		System.out.println("#=================================================");
-		
-		Connection<Post> publicSearch = facebookClient.fetchConnection("search", Post.class,
-				Parameter.with("q", "zynga"), Parameter.with("type", "post"));
-		Connection<User> targetedSearch = facebookClient.fetchConnection("me/home", User.class,
-				Parameter.with("q", "Snow"), Parameter.with("type", "user"));
-	
-		//System.out.println("Public search for 'zynga', first ten search results...");
-		//for (int i=0; i<10; i++) {
-		//	System.out.println("  - " + publicSearch.getData().get(i).getMessage());	
-		//}
-		System.out.println("Posts on my wall by friends named Snow: " + targetedSearch.getData().size());
-		for (List<User> targetedSearchConnectionPage : targetedSearch) {
-			for (User user : targetedSearchConnectionPage) {
-				System.out.println("  - " + user.getName());	
-			}
-		}
-	}
-	
-	private void testInsightsFetch() {
-		System.out.println("#=================================================");
-		System.out.println("# Testing insights fetch...");
-		System.out.println("#=================================================");
-		
-		Connection<Insight> insights = facebookClient.fetchConnection("2439131959/insights", Insight.class);
-		for (Insight insight : insights.getData()) {
-			System.out.println(insight.getName());
-		}
-	}
-	
-	private void search(String searchText, int numResults) {
-		Connection<Post> publicSearch = facebookClient.fetchConnection("search", Post.class,
-				Parameter.with("q", searchText), Parameter.with("type", "post"));
-		System.out.println("Public search for '" + searchText + "', first " + numResults + " search results...");
-		for (int i=0; i<numResults; i++) {
-			System.out.println("["+(i+1)+"] - " + publicSearch.getData().get(i).getMessage());	
-		}
-	}*/
 	
 }
