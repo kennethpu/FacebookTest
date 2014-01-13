@@ -1,3 +1,5 @@
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -10,7 +12,6 @@ import com.restfb.Connection;
 import com.restfb.DefaultFacebookClient;
 import com.restfb.FacebookClient;
 import com.restfb.Parameter;
-import com.restfb.exception.FacebookOAuthException;
 import com.restfb.types.Checkin;
 import com.restfb.types.Photo;
 import com.restfb.types.StatusMessage;
@@ -41,12 +42,40 @@ public class FacebookSearch {
 	}
 	//Work in progress, get a the locations a friend has been to
 	public void getFriendList(){
-		// Get friends data
+		//Get name of person
+		BufferedReader br = new BufferedReader( new InputStreamReader(System.in));
+		System.out.print("First name and last name of the person you want to get location info: "); 
+		String name = "", firstName = "", lastName = "";
+
+		try {
+			name = br.readLine();
+			firstName = name.split(" ")[0];
+			lastName = name.split(" ")[1];
+		} catch ( Exception e) {}
+		
+		
+		// Figure out what the friendIndex is based on the inputted friend's name
 		Connection<User> myFriends = facebookClient.fetchConnection("me/friends", User.class, Parameter.with("fields", "name, id, hometown, location"));
-		numFriends = myFriends.getData().size();
+		int friendIndex = 0;
 		int count = 0;
+		String nameTemp = "", firstNameTemp = "", lastNameTemp = "";
 		for (User f : myFriends.getData()) {
 			System.out.println(count + " " + f.getName());
+			try{
+				nameTemp = f.getName();
+				firstNameTemp = nameTemp.split(" ")[0];
+				lastNameTemp = nameTemp.split(" ")[1];
+				if (firstNameTemp.equals(firstName) && lastNameTemp.equals(lastName)){
+					friendIndex = count;
+					break;
+				}
+				else if (firstNameTemp.equals(firstName)){
+					friendIndex = count;
+				}
+			}
+			catch(Exception e){
+				
+			}				
 			count++;
 		}
 		
@@ -60,7 +89,7 @@ public class FacebookSearch {
 				
 		// Iterate through friends, outputting their location history
 		int i = 0;
-		User f = myFriends.getData().get(401);
+		User f = myFriends.getData().get(friendIndex);
 			
 		// Get friend's checkins
 		Connection<Checkin> checkins = facebookClient.fetchConnection(f.getId()+"/locations", Checkin.class);
