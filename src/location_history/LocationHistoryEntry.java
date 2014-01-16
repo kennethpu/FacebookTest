@@ -1,4 +1,4 @@
-package com.fb.locationHistory;
+package location_history;
 import java.util.Comparator;
 import java.util.Date;
 import com.restfb.types.*;

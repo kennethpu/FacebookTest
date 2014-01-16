@@ -1,4 +1,4 @@
-package com.fb.locationHistory;
+package location_history;
 
 import java.util.ArrayList;
 import java.util.Iterator;
