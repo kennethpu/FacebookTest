@@ -188,7 +188,7 @@ public class FacebookSearch {
 				// the associated time-stamp is within 1 hour of the previous, skip
 				if (lastLoc != null
 						&& (l.getName().equals(lastLoc.getName()))
-						&& ((lastLoc.getDate().getTime() - l.getDate().getTime()) < 60 * 60 * 1000))
+						&& ((lastLoc.getDate().getTime() - l.getDate().getTime()) < 30 * 60 * 1000))
 					continue;
 				lastLoc = l;
 				String location = String.format("%s%s%s %s",  l.getName(), l.getCity(), l.getState(), l.getCountry());

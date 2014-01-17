@@ -7,6 +7,7 @@ import java.util.HashMap;
 import com.restfb.Connection;
 import com.restfb.DefaultFacebookClient;
 import com.restfb.FacebookClient;
+import com.restfb.Parameter;
 import com.restfb.exception.FacebookOAuthException;
 import com.restfb.types.User;
 
@@ -26,15 +27,18 @@ public class ExecuteSearch {
 		HashMap<String, String> tempFriendList= new HashMap<String, String>();
 		
 		Connection<User> myFriends = null;
-		
+		User me = null;
 		// Get friends data
 		try {
 			myFriends = facebookClient.fetchConnection(
 					"me/friends", User.class);
+			me = facebookClient.fetchObject("me", User.class);
 		} catch (FacebookOAuthException e) {
 			System.out.println("ERROR: Authorization Token expired! Must request new token.");
 			return;
 		}
+		
+		tempFriendList.put(me.getName(), me.getId());
 		
 		int numFriends = myFriends.getData().size();
 		// Print statements for debugging purposes
