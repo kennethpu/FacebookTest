@@ -3,8 +3,10 @@ package location_history;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
+import java.util.SortedSet;
 import java.util.TreeSet;
 
+import com.fb.Friend;
 import com.fb.common.SearchThread;
 import com.restfb.Connection;
 import com.restfb.FacebookClient;
@@ -15,11 +17,12 @@ import com.restfb.types.Checkin;
 import com.restfb.types.Photo;
 import com.restfb.types.User;
 
-public class LocationHistoryThread extends SearchThread{
+public class LocationHistoryThread extends SearchThread<LocationHistorySetEntry>{
 
-	public LocationHistoryThread(User user, FacebookClient facebookClient) {
+	public LocationHistoryThread(User user, FacebookClient facebookClient, SortedSet<LocationHistorySetEntry> outputSet) {
 		this.user = user;
 		this.facebookClient = facebookClient;
+		this.outputSet = outputSet;
 	}
 	
 	public List<BatchRequest> buildBatchRequest() throws Exception {
@@ -37,7 +40,7 @@ public class LocationHistoryThread extends SearchThread{
 		return batchRequests;
 	}
 	
-	public void processBatchResponse(List<BatchResponse> batchResponses) {
+	public void processBatchResponse(List<BatchResponse> batchResponses, SortedSet<LocationHistorySetEntry> outputSet) {
 		Connection<Checkin> checkins = new Connection<Checkin>(facebookClient, batchResponses.get(0).getBody(), Checkin.class);
 		Connection<Photo> photos = new Connection<Photo>(facebookClient, batchResponses.get(1).getBody(), Photo.class);
 		
@@ -48,12 +51,13 @@ public class LocationHistoryThread extends SearchThread{
 		
 		// Initialize sorted data structure for storing friend's location
 		// data
-		TreeSet<LocationHistoryEntry> treeSet = new TreeSet(new LocationHistoryEntry());
+		TreeSet<LocationHistoryEntry> treeSet = new TreeSet<LocationHistoryEntry>();
 
 		// Print friend's current location or 'unknown' if not found
 		String curLocation = (user.getLocation() != null) ? user.getLocation().getName() : "unknown";
-		System.out.printf("  [Current] %s\n", curLocation);
-
+		//System.out.printf("  [Current] %s\n", curLocation);
+		
+		
 		// List of previously accessed Checkin lists (to address an issue
 		// where fetch would occasionally loop infinitely through the lists
 		List<List<Checkin>> prev_checkins_list = new ArrayList<List<Checkin>>();
@@ -74,8 +78,7 @@ public class LocationHistoryThread extends SearchThread{
 						|| checkin.getPlace().getLocation().getCountry() == null)
 					continue;
 
-				treeSet.add(new LocationHistoryEntry(checkin.getCreatedTime(),
-						checkin.getPlace()));
+				treeSet.add(new LocationHistoryEntry(checkin.getCreatedTime(), checkin.getPlace()));
 			}
 		}
 
@@ -103,7 +106,12 @@ public class LocationHistoryThread extends SearchThread{
 						.getPlace()));
 			}
 		}
-
+		
+		String hometown = (user.getHometown() != null) ? user.getHometown().getName() : "unknown";
+		
+		outputSet.add(new LocationHistorySetEntry(user.getName(), curLocation, hometown, treeSet));
+		
+		/*
 		// Iterate through location set, outputting valid locations
 		Iterator<LocationHistoryEntry> locationItr = treeSet.iterator();
 		LocationHistoryEntry lastLoc = null;
@@ -121,12 +129,12 @@ public class LocationHistoryThread extends SearchThread{
 
 			System.out.printf("  [%s] %s%s%s %s\n", l.time, l.name, l.city,
 					l.state, l.country);
-		}
+		}*/
 
 		// Print friend's hometown or 'unknown' if not found
-		String hometown = (user.getHometown() != null) ? user.getHometown().getName() : "unknown";
+		/*String hometown = (user.getHometown() != null) ? user.getHometown().getName() : "unknown";
 		System.out.printf("  [Hometown] %s\n", hometown);
-		System.out.println();
+		System.out.println();*/
 	}
 	
 	public void run() {
@@ -158,7 +166,7 @@ public class LocationHistoryThread extends SearchThread{
 			System.out.printf("[LocationHistory] Processing batch response for User: %s...\n", user.getName());
 		}
 		// Process batch responses
-		processBatchResponse(batchResponses);
+		processBatchResponse(batchResponses, outputSet);
 		if (verbose) {
 			System.out.printf("[LocationHistory] Processing batch response for User: %s...DONE\n", user.getName());
 		}

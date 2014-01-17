@@ -3,7 +3,7 @@ import java.util.Comparator;
 import java.util.Date;
 import com.restfb.types.*;
 
-public class LocationHistoryEntry implements Comparator {
+public class LocationHistoryEntry implements Comparable<LocationHistoryEntry> {
 	public Date date;
 	public Place place;
 	public String name;
@@ -30,11 +30,13 @@ public class LocationHistoryEntry implements Comparator {
 //		return (b.date.compareTo(a.date));
 //	}
 
+	//@Override
+	//public int compare(LocationHistoryEntry arg0, LocationHistoryEntry arg1) {
+	//	return (arg1.date.compareTo(arg0.date));
+	//}
 	@Override
-	public int compare(Object arg0, Object arg1) {
-		LocationHistoryEntry a = (LocationHistoryEntry) arg0;
-		LocationHistoryEntry b = (LocationHistoryEntry) arg1;
-		return (b.date.compareTo(a.date));
+	public int compareTo(LocationHistoryEntry arg) {
+		return arg.date.compareTo(this.date);
 	}
 	 
 }

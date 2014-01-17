@@ -5,28 +5,37 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.Iterator;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.SortedSet;
 import java.util.TreeSet;
 
 import location_history.LocationHistoryEntry;
 import location_history.LocationHistoryThread;
+import location_history.LocationHistorySet;
+import location_history.LocationHistorySetEntry;
 
 import com.restfb.Connection;
-import com.restfb.DefaultFacebookClient;
+import com.restfb.DefaultJsonMapper;
 import com.restfb.FacebookClient;
+import com.restfb.JsonMapper;
 import com.restfb.Parameter;
+import com.restfb.batch.BatchRequest;
+import com.restfb.batch.BatchResponse;
+import com.restfb.batch.BatchRequest.BatchRequestBuilder;
 import com.restfb.types.Checkin;
 import com.restfb.types.Photo;
 import com.restfb.types.StatusMessage;
 import com.restfb.types.User;
 
-public class FacebookSearch {
+import com.fb.ExecuteSearch;
 
-	
+public class FacebookSearch {
 
 	// restFB stuff to perform actual facebook queries
 	private FacebookClient facebookClient;
+
+	private BufferedReader br;
 
 	// Number of user's facebook friends
 	private int numFriends;
@@ -41,66 +50,143 @@ public class FacebookSearch {
 	/**
 	 * Default constructor
 	 */
-	public FacebookSearch(String auth_token) {
-		facebookClient = new DefaultFacebookClient(auth_token);
+	public FacebookSearch(FacebookClient facebookClient) {
+		this.facebookClient = facebookClient;
+		this.br = new BufferedReader( new InputStreamReader(System.in));
 	}
-	//Work in progress, get a the locations a friend has been to
-	public void getFriendList(){
-		//Get name of person
-		BufferedReader br = new BufferedReader( new InputStreamReader(System.in));
-		System.out.print("First name and last name of the person you want to get location info: "); 
-		String name = "", firstName = "", lastName = "";
-
-		try {
-			name = br.readLine();
-			firstName = name.split(" ")[0];
-			lastName = name.split(" ")[1];
-		} catch ( Exception e) {}
+	
+	public List<String> getQueryIDs() {
+		boolean loop = true;
+		List<String> ids = new LinkedList<String>();
+		String name = "";
+		boolean inputValid = false;
 		
-		
-		// Figure out what the friendIndex is based on the inputted friend's name
-		Connection<User> myFriends = facebookClient.fetchConnection("me/friends", User.class, Parameter.with("type", "user"), Parameter.with("fields", "name, id, hometown, location"));
-		int friendIndex = 0;
-		int count = 0;
-		String nameTemp = "", firstNameTemp = "", lastNameTemp = "";
-		for (User f : myFriends.getData()) {
-			System.out.println(count + " " + f.getName());
-			try{
-				nameTemp = f.getName();
-				firstNameTemp = nameTemp.split(" ")[0];
-				lastNameTemp = nameTemp.split(" ")[1];
-				if (firstNameTemp.equals(firstName) && lastNameTemp.equals(lastName)){
-					friendIndex = count;
-					break;
-				}
-				else if (firstNameTemp.equals(firstName)){
-					friendIndex = count;
+		while (loop) {
+			inputValid = false;
+			while(!inputValid) {
+				name = "";
+				System.out.print("First name and last name of query user (Hit <Enter> twice when done): "); 
+				try {
+					name = br.readLine();
+				} catch ( Exception e) {}
+				
+				if (ExecuteSearch.friendsList.containsKey(name) && !ids.contains(ExecuteSearch.friendsList.get(name))) {
+					inputValid = true;
+					ids.add(ExecuteSearch.friendsList.get(name));
+				} else if (name.equals("") && ids.size() > 0){
+					inputValid = true;
+					loop = false;
+				} else {
+					System.out.println("Invalid input!");
 				}
 			}
-			catch(Exception e){
-				
-			}				
-			count++;
 		}
-		
-		long start = System.currentTimeMillis();
+		return ids;
+	}
+	
+	//Work in progress, get a the locations a friend has been to
+	public void getFriendList(){		
 		System.out.println("#===========================================================");
 		System.out.println("# getLocationHistory()");
 		System.out.println("#===========================================================");
+		List<String> queryIDs = getQueryIDs();
 		
-		// Print statements for debugging purposes
-		System.out.println("Friend Count: " + numFriends);
-				
-		User f = myFriends.getData().get(friendIndex);
+		long start = System.currentTimeMillis();
 		
-		LocationHistoryThread t = new LocationHistoryThread(f, facebookClient);
-		t.start();
-		
-		try {
-			t.join();
-		} catch (InterruptedException e) {
+		// Initialize data structure for storing BatchRequests
+		List<BatchRequest> batchRequests = new ArrayList<BatchRequest>();
+		for (String id : queryIDs) {
+			BatchRequest req = new BatchRequestBuilder(id).parameters(Parameter.with("fields", "name, id, hometown, location")).build();
+			batchRequests.add(req);
+			/*User u = facebookClient.fetchObject(id, User.class,
+					Parameter.with("fields", "name, id, hometown, location"));
+			LocationHistoryThread t = new LocationHistoryThread(u, facebookClient);
+			t.start();
+			threads.add(t);*/
 		}
 		
+		// Execute batch request
+		List<BatchResponse> batchResponses =
+				  facebookClient.executeBatch((BatchRequest[]) batchRequests.toArray(new BatchRequest[0]));
+		
+		LocationHistorySet<LocationHistorySetEntry> locHistSet = new LocationHistorySet<LocationHistorySetEntry>();
+		SortedSet<LocationHistorySetEntry> outputSet = Collections.synchronizedSortedSet(locHistSet);
+
+		// Process batch responses
+		List<LocationHistoryThread> threads = new ArrayList<LocationHistoryThread>();
+		JsonMapper jsonMapper = new DefaultJsonMapper();
+		BatchResponse batchResponse;
+		int batchSize = batchResponses.size();
+		for (int i=0; i<batchSize; i++) {
+			batchResponse = batchResponses.get(i);
+			if (batchResponse.getCode() != 200) {
+				System.out.println("ERROR: Batch request failed: " + batchResponse);
+				continue;
+			}
+			User u = jsonMapper.toJavaObject(batchResponse.getBody(), User.class);
+			LocationHistoryThread t = new LocationHistoryThread(u, facebookClient, outputSet);
+			t.start();
+			threads.add(t);
+		}
+		
+		// Wait for all batch request threads to finish executing
+		for (LocationHistoryThread t : threads) {
+			try {
+				t.join();
+			} catch (InterruptedException e) {}
+		}
+		
+		int i = 0;
+		Iterator<LocationHistorySetEntry> entryItr = outputSet.iterator();
+
+		while (entryItr.hasNext()) {
+			i++;
+			LocationHistorySetEntry entry = entryItr.next();
+			System.out.printf("[%-2d] %s\n", i, entry.getName());
+			System.out.printf("  [Current] %s\n", entry.getCurLocation());
+			Iterator<LocationHistoryEntry> locationItr = entry.getTreeSet().iterator();
+			LocationHistoryEntry lastLoc = null;
+			while (locationItr.hasNext()) {
+				LocationHistoryEntry l = locationItr.next();
+
+				// If the current location is the same as the previous one and
+				// the associated time-stamp is within 1 hour of the previous, skip
+				if (lastLoc != null
+						&& (l.name.equals(lastLoc.name))
+						&& ((lastLoc.date.getTime() - l.date.getTime()) < 60 * 60 * 1000))
+					continue;
+				lastLoc = l;
+
+				System.out.printf("  [%s] %s%s%s %s\n", l.time, l.name, l.city,
+						l.state, l.country);
+			}
+			System.out.printf("  [Hometown] %s\n", entry.getHometown());
+		}
+		
+		/*
+		// Iterate through location set, outputting valid locations
+		Iterator<LocationHistoryEntry> locationItr = treeSet.iterator();
+		LocationHistoryEntry lastLoc = null;
+		while (locationItr.hasNext()) {
+			LocationHistoryEntry l = locationItr.next();
+
+			// If the current location is the same as the previous one and
+			// the
+			// associated time-stamp is within 1 hour of the previous, skip
+			if (lastLoc != null
+					&& (l.name.equals(lastLoc.name))
+					&& ((lastLoc.date.getTime() - l.date.getTime()) < 60 * 60 * 1000))
+				continue;
+			lastLoc = l;
+
+			System.out.printf("  [%s] %s%s%s %s\n", l.time, l.name, l.city,
+					l.state, l.country);
+		}*/
+
+		// Print friend's hometown or 'unknown' if not found
+		/*String hometown = (user.getHometown() != null) ? user.getHometown().getName() : "unknown";
+		System.out.printf("  [Hometown] %s\n", hometown);
+		System.out.println();*/
 		long end = System.currentTimeMillis();
 		long duration = (end-start)/1000;
 		System.out.printf("Duration: %ds\n", duration);
@@ -156,9 +242,8 @@ public class FacebookSearch {
 			i++;
 			System.out.printf("[%-3d] %-30s\n", i, f.getName());
 
-			// Initialize sorted data structure for storing friend's location
-			// data
-			TreeSet<LocationHistoryEntry> treeSet = new TreeSet(new LocationHistoryEntry());
+			// Initialize sorted data structure for storing friend's location data
+			TreeSet<LocationHistoryEntry> treeSet = new TreeSet<LocationHistoryEntry>();
 
 			// Print friend's current location or 'unknown' if not found
 			String curLocation = (f.getLocation() != null) ? f.getLocation()
