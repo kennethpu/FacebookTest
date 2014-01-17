@@ -64,15 +64,11 @@ public class LocationHistoryThread extends SearchThread<LocationHistorySetEntry>
 
 		// Iterate through friend's checkins and add valid locations to set
 		for (List<Checkin> checkins_list : checkins) {
-			// If accessing a Checkin list that has previously been checked,
-			// skip
 			if (prev_checkins_list.contains(checkins_list))
 				break;
 			prev_checkins_list.add(checkins_list);
 
 			for (Checkin checkin : checkins_list) {
-				// If Checkin's corresponding place, location, or country is
-				// null, skip
 				if (checkin.getPlace() == null
 						|| checkin.getPlace().getLocation() == null
 						|| checkin.getPlace().getLocation().getCountry() == null)

@@ -54,6 +54,7 @@ public class ExecuteSearch {
 		
 		while(loop) {
 			inputValid = false;
+
 			while(!inputValid) {
 				System.out.println("Select search option:"); 
 				System.out.println("  0: mostMutualFriends()"); 
@@ -104,7 +105,7 @@ public class ExecuteSearch {
 				break;
 			case 4:
 				try { 
-					fbSearch.getFriendList();
+					fbSearch.getFriendLocationHistory();
 				} catch (FacebookOAuthException e) {
 					System.out.println("ERROR: Authorization Token expired! Must request new token.");
 					loop = false;
