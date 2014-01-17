@@ -10,10 +10,6 @@ import java.util.List;
 import java.util.SortedSet;
 import java.util.TreeSet;
 
-import location_history.LocationHistoryEntry;
-import location_history.LocationHistoryThread;
-import location_history.LocationHistorySet;
-import location_history.LocationHistorySetEntry;
 
 import com.restfb.Connection;
 import com.restfb.DefaultJsonMapper;
@@ -29,6 +25,10 @@ import com.restfb.types.StatusMessage;
 import com.restfb.types.User;
 
 import com.fb.ExecuteSearch;
+import com.fb.location_history.LocationHistoryEntry;
+import com.fb.location_history.LocationHistorySet;
+import com.fb.location_history.LocationHistorySetEntry;
+import com.fb.location_history.LocationHistoryThread;
 
 public class FacebookSearch {
 
@@ -55,6 +55,10 @@ public class FacebookSearch {
 		this.br = new BufferedReader( new InputStreamReader(System.in));
 	}
 
+	/**
+	 * Queries user for a list of Facebook users to perform operations on,
+	 * then returns a list of their corresponding Facebook IDs
+	 */
 	public List<String> getQueryIDs() {
 		boolean loop = true;
 		List<String> ids = new LinkedList<String>();
@@ -84,8 +88,18 @@ public class FacebookSearch {
 		return ids;
 	}
 	
-	//Work in progress, get a the locations a friend has been to
-	public void getFriendLocationHistory(){
+	/**
+	 * Outputs a list of facebook friends and their corresponding location
+	 * history, including hometown and current location if available
+	 * 
+	 * Required Permissions: 
+	 * - user_friends 
+	 * - friends_status 
+	 * - friends_photos 
+	 * - friends_hometown 
+	 * - friends_location
+	 */
+	public void getLocationHistory() {
 					
 		System.out.println("#===========================================================");
 		System.out.println("# getLocationHistory()");
@@ -166,136 +180,6 @@ public class FacebookSearch {
 		
 		long end = System.currentTimeMillis();
 		long duration = (end-start)/1000;
-		System.out.printf("Duration: %ds\n", duration);
-	}
-
-	/**
-	 * Outputs a list of facebook friends and their corresponding location
-	 * history, including hometown and current location if available
-	 * 
-	 * Required Permissions: 
-	 * - user_friends 
-	 * - friends_status 
-	 * - friends_photos 
-	 * - friends_hometown 
-	 * - friends_location
-	 */
-	public void getLocationHistory() {
-		long start = System.currentTimeMillis();
-		System.out.println("#===========================================================");
-		System.out.println("# getLocationHistory()");
-		System.out.println("#===========================================================");
-
-		// Get friends data
-		Connection<User> myFriends = facebookClient.fetchConnection(
-				"me/friends", User.class,
-				Parameter.with("fields", "name, id, hometown, location"));
-		numFriends = myFriends.getData().size();
-
-		System.out.println("Friend Count: " + numFriends);
-
-		// Iterate through friends, outputting their location history
-		int i = 0;
-		for (User f : myFriends.getData()) {
-			Connection<Checkin> checkins = facebookClient.fetchConnection(
-					f.getId() + "/locations", Checkin.class);
-			Connection<Photo> photos = facebookClient.fetchConnection(f.getId()
-					+ "/photos", Photo.class);
-
-			if (checkins.getData().size() == 0 && f.getLocation() == null
-					&& f.getHometown() == null && photos.getData().size() == 0)
-				continue;
-
-			// Output friend name
-			i++;
-			System.out.printf("[%-3d] %-30s\n", i, f.getName());
-
-			// Initialize sorted data structure for storing friend's location data
-			TreeSet<LocationHistoryEntry> treeSet = new TreeSet<LocationHistoryEntry>();
-
-			// Print friend's current location or 'unknown' if not found
-			String curLocation = (f.getLocation() != null) ? f.getLocation()
-					.getName() : "unknown";
-			System.out.printf("  [Current] %s\n", curLocation);
-
-			// List of previously accessed Checkin lists (to address an issue
-			// where fetch would occasionally loop infinitely through the lists
-			List<List<Checkin>> prev_checkins_list = new ArrayList<List<Checkin>>();
-
-			// Iterate through friend's checkins and add valid locations to set
-			for (List<Checkin> checkins_list : checkins) {
-				// If accessing a Checkin list that has previously been checked,
-				// skip
-				if (prev_checkins_list.contains(checkins_list))
-					break;
-				prev_checkins_list.add(checkins_list);
-
-				for (Checkin checkin : checkins_list) {
-					// If Checkin's corresponding place, location, or country is
-					// null, skip
-					if (checkin.getPlace() == null
-							|| checkin.getPlace().getLocation() == null
-							|| checkin.getPlace().getLocation().getCountry() == null)
-						continue;
-
-					treeSet.add(new LocationHistoryEntry(checkin.getCreatedTime(),
-							checkin.getPlace()));
-				}
-			}
-
-			// List of previously accessed Photo lists (to address an issue
-			// where fetch would occasionally loop infinitely through the lists
-			List<List<Photo>> prev_photos_list = new ArrayList<List<Photo>>();
-
-			// Iterate through friend's photos and add valid locations to set
-			for (List<Photo> photos_list : photos) {
-				// If accessing a Photo list that has previously been checked,
-				// skip
-				if (prev_checkins_list.contains(photos_list))
-					break;
-				prev_photos_list.add(photos_list);
-
-				for (Photo photo : photos_list) {
-					// If Photo's corresponding place, location, or country is
-					// null, skip
-					if (photo.getPlace() == null
-							|| photo.getPlace().getLocation() == null
-							|| photo.getPlace().getLocation().getCountry() == null)
-						continue;
-
-					treeSet.add(new LocationHistoryEntry(photo.getCreatedTime(), photo
-							.getPlace()));
-				}
-			}
-
-			// Iterate through location set, outputting valid locations
-			Iterator<LocationHistoryEntry> locationItr = treeSet.iterator();
-			LocationHistoryEntry lastLoc = null;
-			while (locationItr.hasNext()) {
-				LocationHistoryEntry l = locationItr.next();
-
-				// If the current location is the same as the previous one and
-				// the
-				// associated time-stamp is within 1 hour of the previous, skip
-				if (lastLoc != null
-						&& (l.name.equals(lastLoc.name))
-						&& ((lastLoc.date.getTime() - l.date.getTime()) < 60 * 60 * 1000))
-					continue;
-				lastLoc = l;
-
-				System.out.printf("  [%s] %s%s%s %s\n", l.time, l.name, l.city,
-						l.state, l.country);
-			}
-
-			// Print friend's hometown or 'unknown' if not found
-			String hometown = (f.getHometown() != null) ? f.getHometown()
-					.getName() : "unknown";
-			System.out.printf("  [Hometown] %s\n", hometown);
-			System.out.println();
-		}
-
-		long end = System.currentTimeMillis();
-		long duration = (end - start) / 1000;
 		System.out.printf("Duration: %ds\n", duration);
 	}
 

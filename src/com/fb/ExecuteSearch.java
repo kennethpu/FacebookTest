@@ -1,6 +1,5 @@
 package com.fb;
 
-
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.util.HashMap;
@@ -11,7 +10,6 @@ import com.restfb.FacebookClient;
 import com.restfb.exception.FacebookOAuthException;
 import com.restfb.types.User;
 
-
 public class ExecuteSearch {
 	
 	public static HashMap<String, String> friendsList = new HashMap<String, String>();
@@ -21,7 +19,7 @@ public class ExecuteSearch {
 	 */
 	public static void main(String[] args) {
 		//Site to get auth_token https://developers.facebook.com/tools/explorer
-		String MY_AUTH_TOKEN = "CAACEdEose0cBAInbNglp3Ks4nkdbTaGxIF5n3zBFG6LSkUFi52vMJkXfvsyhD17WnQzVPZCKNX6YSqh2SX5rw30KL5gKg4aMSrhvtDUoFQfgZB8qlXRTl43RWZB9VZBu6XUPn0LGfyxcZAMlv70pHc3DWG0sS8MHqttVloVQba2vGFFMEhv16JyM3PbTbFjQZD";
+		String MY_AUTH_TOKEN = "CAACEdEose0cBAESvU88FBvt4wjiB2vTTAl8eXNsLj9bhYhmagAYZAZBJhHdP67YZA4mYnM48ulBaaA48Be7VmFCxkMwKTiI9TU6NUgnjkfLjZCShr0ZBOcAhn7ZBzjjP4UvLDUt7fLWqiGJEmz2bn84EDcKvn9Vvo3C0NriZCd4ZB2MpHEdZAro26x0tPT7laHh0ZD";
 		FacebookClient facebookClient = new DefaultFacebookClient(MY_AUTH_TOKEN);
 		FacebookSearch fbSearch = new FacebookSearch(facebookClient);
 		
@@ -60,8 +58,7 @@ public class ExecuteSearch {
 				System.out.println("  0: mostMutualFriends()"); 
 				System.out.println("  1: getFriendEducation()"); 
 				System.out.println("  2: getFriendStatuses()"); 
-				System.out.println("  3: getLocationHistory()"); 
-				System.out.println("  4: getFriendList()");
+				System.out.println("  3: getLocationHistory()");
 				try {
 					sel = Integer.parseInt(br.readLine());
 					inputValid = true;
@@ -98,14 +95,6 @@ public class ExecuteSearch {
 			case 3:
 				try {
 					fbSearch.getLocationHistory();
-				} catch (FacebookOAuthException e) {
-					System.out.println("ERROR: Authorization Token expired! Must request new token.");
-					loop = false;
-				}
-				break;
-			case 4:
-				try { 
-					fbSearch.getFriendLocationHistory();
 				} catch (FacebookOAuthException e) {
 					System.out.println("ERROR: Authorization Token expired! Must request new token.");
 					loop = false;
