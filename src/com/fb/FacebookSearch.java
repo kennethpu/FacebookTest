@@ -45,7 +45,7 @@ public class FacebookSearch {
 		facebookClient = new DefaultFacebookClient(auth_token);
 	}
 	//Work in progress, get a the locations a friend has been to
-	public void getFriendList(){
+	public void getFriendLocationHistory(){
 		//Get name of person
 		BufferedReader br = new BufferedReader( new InputStreamReader(System.in));
 		System.out.print("First name and last name of the person you want to get location info: "); 
@@ -98,8 +98,7 @@ public class FacebookSearch {
 		
 		try {
 			t.join();
-		} catch (InterruptedException e) {
-		}
+		} catch (InterruptedException e) {}
 		
 		long end = System.currentTimeMillis();
 		long duration = (end-start)/1000;
@@ -119,11 +118,9 @@ public class FacebookSearch {
 	 */
 	public void getLocationHistory() {
 		long start = System.currentTimeMillis();
-		System.out
-				.println("#===========================================================");
+		System.out.println("#===========================================================");
 		System.out.println("# getLocationHistory()");
-		System.out
-				.println("#===========================================================");
+		System.out.println("#===========================================================");
 
 		// Get friends data
 		Connection<User> myFriends = facebookClient.fetchConnection(
@@ -131,23 +128,16 @@ public class FacebookSearch {
 				Parameter.with("fields", "name, id, hometown, location"));
 		numFriends = myFriends.getData().size();
 
-		// Print statements for debugging purposes
 		System.out.println("Friend Count: " + numFriends);
 
 		// Iterate through friends, outputting their location history
 		int i = 0;
 		for (User f : myFriends.getData()) {
-
-			// Get friend's checkins
 			Connection<Checkin> checkins = facebookClient.fetchConnection(
 					f.getId() + "/locations", Checkin.class);
-
-			// Get friend's photos
 			Connection<Photo> photos = facebookClient.fetchConnection(f.getId()
 					+ "/photos", Photo.class);
 
-			// If friend has no relevant data (no hometown, current location,
-			// checkins, or photos) skip
 			if (checkins.getData().size() == 0 && f.getLocation() == null
 					&& f.getHometown() == null && photos.getData().size() == 0)
 				continue;
@@ -156,8 +146,6 @@ public class FacebookSearch {
 			i++;
 			System.out.printf("[%-3d] %-30s\n", i, f.getName());
 
-			// Initialize sorted data structure for storing friend's location
-			// data
 			TreeSet<LocationHistoryEntry> treeSet = new TreeSet(new LocationHistoryEntry());
 
 			// Print friend's current location or 'unknown' if not found
