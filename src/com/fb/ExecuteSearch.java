@@ -19,7 +19,7 @@ public class ExecuteSearch {
 	 */
 	public static void main(String[] args) {
 		//Site to get auth_token https://developers.facebook.com/tools/explorer
-		String MY_AUTH_TOKEN = "CAACEdEose0cBAESvU88FBvt4wjiB2vTTAl8eXNsLj9bhYhmagAYZAZBJhHdP67YZA4mYnM48ulBaaA48Be7VmFCxkMwKTiI9TU6NUgnjkfLjZCShr0ZBOcAhn7ZBzjjP4UvLDUt7fLWqiGJEmz2bn84EDcKvn9Vvo3C0NriZCd4ZB2MpHEdZAro26x0tPT7laHh0ZD";
+		String MY_AUTH_TOKEN = "CAACEdEose0cBAFuJEuLQ5zknLzfucV36OEhzfe1bGwntJmd3bRJXGZABs55U0pq9cq3yvYFTrFXAsSP4rXN5QDdXx2a3RwFAOVSRFnZAfR9pOry267gXYaBA7Sf8VroodHqJcrcBGUnXrCkVldf1SnZCQyYgHHeCZBkOgtociuedS5g5IddGUkSuCc5ZBRpYZD";
 		FacebookClient facebookClient = new DefaultFacebookClient(MY_AUTH_TOKEN);
 		FacebookSearch fbSearch = new FacebookSearch(facebookClient);
 		
@@ -58,7 +58,7 @@ public class ExecuteSearch {
 				System.out.println("  0: mostMutualFriends()"); 
 				System.out.println("  1: getFriendEducation()"); 
 				System.out.println("  2: getFriendStatuses()"); 
-				System.out.println("  3: getLocationHistory()");
+				System.out.println("  3: getFriendLocationHistory()");
 				try {
 					sel = Integer.parseInt(br.readLine());
 					inputValid = true;
@@ -94,7 +94,7 @@ public class ExecuteSearch {
 				break;
 			case 3:
 				try {
-					fbSearch.getLocationHistory();
+					fbSearch.getFriendLocationHistory();
 				} catch (FacebookOAuthException e) {
 					System.out.println("ERROR: Authorization Token expired! Must request new token.");
 					loop = false;

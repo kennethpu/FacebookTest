@@ -99,17 +99,21 @@ public class FacebookSearch {
 	 * - friends_hometown 
 	 * - friends_location
 	 */
-	public void getLocationHistory() {
+	public void getFriendLocationHistory() {
 					
 		System.out.println("#===========================================================");
-		System.out.println("# getLocationHistory()");
+		System.out.println("# getFriendLocationHistory()");
 		System.out.println("#===========================================================");
+		
+		// Get list user ids to perform query for
 		List<String> queryIDs = getQueryIDs();
 		
 		long start = System.currentTimeMillis();
 		
 		// Initialize data structure for storing BatchRequests
 		List<BatchRequest> batchRequests = new ArrayList<BatchRequest>();
+		
+		// Build a batch request to retrieve relevant data for the users specified
 		for (String id : queryIDs) {
 			BatchRequest req = new BatchRequestBuilder(id).parameters(Parameter.with("fields", "name, id, hometown, location")).build();
 			batchRequests.add(req);
@@ -124,12 +128,19 @@ public class FacebookSearch {
 		List<BatchResponse> batchResponses =
 				  facebookClient.executeBatch((BatchRequest[]) batchRequests.toArray(new BatchRequest[0]));
 		
+		
+		
+		// Initialize data structure (synchronized + sorted) for containing the output
 		LocationHistorySet<LocationHistorySetEntry> locHistSet = new LocationHistorySet<LocationHistorySetEntry>();
 		SortedSet<LocationHistorySetEntry> outputSet = Collections.synchronizedSortedSet(locHistSet);
 
-		// Process batch responses
-		List<LocationHistoryThread> threads = new ArrayList<LocationHistoryThread>();
+		// Initialize helper class to reconstruct restfb classes from batch response
 		JsonMapper jsonMapper = new DefaultJsonMapper();
+		
+		// Initialize data structure to keep track of threads
+		List<LocationHistoryThread> threads = new ArrayList<LocationHistoryThread>();
+
+		// Process batch responses
 		BatchResponse batchResponse;
 		int batchSize = batchResponses.size();
 		for (int i=0; i<batchSize; i++) {
@@ -138,7 +149,10 @@ public class FacebookSearch {
 				System.out.println("ERROR: Batch request failed: " + batchResponse);
 				continue;
 			}
+			// Reconstruct User from batch response
 			User u = jsonMapper.toJavaObject(batchResponse.getBody(), User.class);
+			
+			// Spawm a new LocationHistoryThread to perform the processing steps for this user
 			LocationHistoryThread t = new LocationHistoryThread(u, facebookClient, outputSet);
 			t.start();
 			threads.add(t);
@@ -151,14 +165,20 @@ public class FacebookSearch {
 			} catch (InterruptedException e) {}
 		}
 		
+		// Iterate through output set and print results to screen
 		int i = 0;
 		Iterator<LocationHistorySetEntry> entryItr = outputSet.iterator();
-
 		while (entryItr.hasNext()) {
 			i++;
 			LocationHistorySetEntry entry = entryItr.next();
+			
+			// Print user name
 			System.out.printf("[%-2d] %s\n", i, entry.getName());
+			
+			// Print current location or 'unknown' if not found
 			System.out.printf("  [Current] %s\n", entry.getCurLocation());
+			
+			// Iterate through visited locations and print them
 			Iterator<LocationHistoryEntry> locationItr = entry.getTreeSet().iterator();
 			LocationHistoryEntry lastLoc = null;
 			while (locationItr.hasNext()) {
@@ -167,14 +187,15 @@ public class FacebookSearch {
 				// If the current location is the same as the previous one and
 				// the associated time-stamp is within 1 hour of the previous, skip
 				if (lastLoc != null
-						&& (l.name.equals(lastLoc.name))
-						&& ((lastLoc.date.getTime() - l.date.getTime()) < 60 * 60 * 1000))
+						&& (l.getName().equals(lastLoc.getName()))
+						&& ((lastLoc.getDate().getTime() - l.getDate().getTime()) < 60 * 60 * 1000))
 					continue;
 				lastLoc = l;
-
-				System.out.printf("  [%s] %s%s%s %s\n", l.time, l.name, l.city,
-						l.state, l.country);
+				String location = String.format("%s%s%s %s",  l.getName(), l.getCity(), l.getState(), l.getCountry());
+				System.out.printf("  [%s] %-75s <%f, %f>\n", l.getTime(), location, l.getLatitude(), l.getLongitude());
 			}
+
+			// Print hometown or 'unknown' if not found
 			System.out.printf("  [Hometown] %s\n", entry.getHometown());
 		}
 		
@@ -195,11 +216,9 @@ public class FacebookSearch {
 	public void getFriendStatuses(int num_statuses) {
 		long start = System.currentTimeMillis();
 
-		System.out
-				.println("#===========================================================");
+		System.out.println("#===========================================================");
 		System.out.println("# getFriendStatuses()");
-		System.out
-				.println("#===========================================================");
+		System.out.println("#===========================================================");
 
 		// if num_statuses <= 0, output ALL statuses
 		if (num_statuses <= 0)
