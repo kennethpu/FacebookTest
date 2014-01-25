@@ -132,8 +132,7 @@ public class LocationHistoryThread extends SearchThread<LocationHistorySetEntry>
 		float homeLat = -1, homeLong = -1;
 		String query = "SELECT current_location, hometown_location FROM user WHERE uid = " + user.getId();
 		FqlEntry entry = facebookClient.executeFqlQuery(query, FqlEntry.class).get(0);
-		
-		System.out.println(user.getId());
+
 		if (user.getLocation() != null) {
 			curLocation = String.format("%s %s %s", entry.current.city, entry.current.state, entry.current.country);
 			curLat = entry.current.latitude;

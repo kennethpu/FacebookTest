@@ -208,6 +208,103 @@ public class FacebookSearch {
 			}
 		}
 		
+		System.out.printf(
+		"<html>\n" +
+		"  <head>\n" + 
+		"    <title>Simple Map</title>\n" + 
+		"    <meta name=\"viewport\" content=\"initial-scale=1.0, user-scalable=no\">\n" +
+		"    <meta charset=\"utf-8\">\n" +
+		"    <style>\n" +
+		"      html, body, #map-canvas {\n" +
+		"        height: 100%%;\n" + 
+		"        margin: 0px;\n" +
+		"        padding: 0p\n" +
+		"      }\n" +
+		"    </style>\n" +
+		"    <script src=\"https://maps.googleapis.com/maps/api/js?v=3.exp&sensor=false\"></script>\n" +
+		"    <script>\n\n" +
+
+		"function initialize() { \n" +
+		"  var mapOptions = {\n" +
+		"    center: new google.maps.LatLng(%f, %f),\n" +
+		"    zoom: 8,\n" +
+		"    mapTypeId: google.maps.MapTypeId.TERRAIN\n" +
+		"  };\n" +
+
+		"  var map = new google.maps.Map(document.getElementById('map-canvas'),\n" +
+		"      mapOptions);\n", outputSet.last().getCurLat(), outputSet.last().getCurLong());
+		
+		String[] colors = {"yellow", "red", "blue", "green", "orange", "pink", "purple"};
+		int tail = 1;
+		for (LocationHistorySetEntry lhs_entry : outputSet) {
+			System.out.printf("  var lineCoords%d = [\n", tail);
+			System.out.printf("    new google.maps.LatLng(%f, %f),\n", lhs_entry.getHomeLat(), lhs_entry.getHomeLong());
+			
+			LocationHistoryEntry lastLoc = null;
+			for (LocationHistoryEntry lh_entry : lhs_entry.getTreeSet()) {
+				if (lastLoc != null
+						&& (lh_entry.getName().equals(lastLoc.getName()))
+						&& ((lastLoc.getDate().getTime() - lh_entry.getDate().getTime()) < 30 * 60 * 1000))
+					continue;
+				lastLoc = lh_entry;
+				System.out.printf("    new google.maps.LatLng(%f, %f),\n", lh_entry.getLatitude(), lh_entry.getLongitude());
+			}
+			
+			System.out.printf("    new google.maps.LatLng(%f, %f)\n", lhs_entry.getCurLat(), lhs_entry.getCurLong());
+			
+			System.out.printf("  ];\n");
+			
+			System.out.printf(
+			"  var line%d = new google.maps.Polyline({\n" +
+			"    path: lineCoords%d,\n" +
+			"    map: map,\n" +
+			"    strokeColor: '%s'\n" +
+			"  });\n", tail, tail, colors[tail%colors.length]);
+			
+			System.out.printf(
+			"var markerc = new google.maps.Marker({\n" +
+			"    icon: 'http://maps.google.com/mapfiles/ms/icons/%s-dot.png',\n" +
+			"    position: new google.maps.LatLng(%f, %f),\n" +
+			"    map: map,\n" +
+			"    title:\"[Current] %s\"\n" + 
+			"});\n", colors[tail%colors.length], lhs_entry.getCurLat(), lhs_entry.getCurLong(), lhs_entry.getCurLocation()); 
+			
+			int tail2 = 1;
+			lastLoc = null;
+			for (LocationHistoryEntry lh_entry : lhs_entry.getTreeSet()) {
+				if (lastLoc != null
+						&& (lh_entry.getName().equals(lastLoc.getName()))
+						&& ((lastLoc.getDate().getTime() - lh_entry.getDate().getTime()) < 30 * 60 * 1000))
+					continue;
+				lastLoc = lh_entry;
+				System.out.printf(
+				"var marker%d = new google.maps.Marker({\n" +
+				"    icon: 'http://maps.google.com/mapfiles/ms/icons/%s.png',\n" +
+				"    position:new google.maps.LatLng(%f, %f),\n" +
+				"    map: map,\n" +
+				"    title:\"[%s] %s%s%s %s\"\n" + 
+				"});\n", tail2++, colors[tail%colors.length], lh_entry.getLatitude(), lh_entry.getLongitude(), lh_entry.getTime(), lh_entry.getName(), lh_entry.getCity(), lh_entry.getState(), lh_entry.getCountry()); 
+			}
+
+			System.out.printf(
+			"var markerh = new google.maps.Marker({\n" +
+			"    icon: 'http://maps.google.com/mapfiles/ms/icons/%s-dot.png',\n" +
+			"    position: new google.maps.LatLng(%f, %f),\n" +
+			"    map: map,\n" +
+			"    title:\"[Hometown] %s\"\n" + 
+			"});\n", colors[tail++%colors.length], lhs_entry.getHomeLat(), lhs_entry.getHomeLong(), lhs_entry.getHometown()); 
+		}
+		
+		System.out.printf(
+		"}\n" +
+		"google.maps.event.addDomListener(window, 'load', initialize);\n" +
+		"    </script>\n" +
+		"  </head>\n" +
+		"  <body>\n" +
+		"    <div id=\"map-canvas\"></div>\n" +
+		"  </body>\n" +
+		"</html>\n");
+		
 		long end = System.currentTimeMillis();
 		long duration = (end-start)/1000;
 		System.out.printf("Duration: %ds\n", duration);

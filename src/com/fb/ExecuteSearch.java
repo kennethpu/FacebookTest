@@ -19,7 +19,7 @@ public class ExecuteSearch {
 	 */
 	public static void main(String[] args) {
 		//Site to get auth_token https://developers.facebook.com/tools/explorer
-		String MY_AUTH_TOKEN = "CAACEdEose0cBAIYUFYwhAPUME3wefVkbqcEOcYMB27ZBjSmKP5yxcAGZC5OTP0aIPeZCuZBPXe0zapnMOJVhsRkXujooVVep8XPWJpsgIf9ZAYtF6c12y07eqpOpAnQOu50ZBRC9ChNr2ZCjkT4GKTHySEWYZAG1ZBeaUAjMKEjg0N65zsUjoelP7uttAZCn3eq3kZD";
+		String MY_AUTH_TOKEN = "CAACEdEose0cBAJTRCKkZA7y9E8wjrrWwFZCixiQJSoPY3DZCQrEHgEf9i1SWzNnLm55kbz3ULfUxM6CIWZAVKn6uLb4ZBEquGUy2Vsz6IR4eZAtuKS9nZBKhosHxR3CVQVWQ2iMTUoDCFb8lm7qc4uxCUxsaUZCS2eSc2QEl5odvAR7ZB0Jr89FlVE9Tt8YaWaHYZD";
 		FacebookClient facebookClient = new DefaultFacebookClient(MY_AUTH_TOKEN);
 		FacebookSearch fbSearch = new FacebookSearch(facebookClient);
 		
