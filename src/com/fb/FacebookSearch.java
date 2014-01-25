@@ -176,7 +176,11 @@ public class FacebookSearch {
 			System.out.printf("[%-2d] %s\n", i, entry.getName());
 			
 			// Print current location or 'unknown' if not found
-			System.out.printf("  [Current] %s\n", entry.getCurLocation());
+			if (entry.getCurLocation().equals("unknown")) {
+				System.out.printf("                       [Current] %s\n", entry.getCurLocation());
+			} else {
+				System.out.printf("                       [Current] %-75s <%f, %f>\n", entry.getCurLocation(), entry.getCurLat(), entry.getCurLong());
+			}
 			
 			// Iterate through visited locations and print them
 			Iterator<LocationHistoryEntry> locationItr = entry.getTreeSet().iterator();
@@ -196,7 +200,12 @@ public class FacebookSearch {
 			}
 
 			// Print hometown or 'unknown' if not found
-			System.out.printf("  [Hometown] %s\n", entry.getHometown());
+			if (entry.getHometown().equals("unknown")) {
+				System.out.printf("                      [Hometown] %s\n", entry.getHometown());
+			} else {
+
+				System.out.printf("                      [Hometown] %-75s <%f, %f>\n", entry.getHometown(), entry.getHomeLat(), entry.getHomeLong());
+			}
 		}
 		
 		long end = System.currentTimeMillis();

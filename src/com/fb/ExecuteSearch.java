@@ -7,7 +7,6 @@ import java.util.HashMap;
 import com.restfb.Connection;
 import com.restfb.DefaultFacebookClient;
 import com.restfb.FacebookClient;
-import com.restfb.Parameter;
 import com.restfb.exception.FacebookOAuthException;
 import com.restfb.types.User;
 
@@ -20,7 +19,7 @@ public class ExecuteSearch {
 	 */
 	public static void main(String[] args) {
 		//Site to get auth_token https://developers.facebook.com/tools/explorer
-		String MY_AUTH_TOKEN = "CAACEdEose0cBAFuJEuLQ5zknLzfucV36OEhzfe1bGwntJmd3bRJXGZABs55U0pq9cq3yvYFTrFXAsSP4rXN5QDdXx2a3RwFAOVSRFnZAfR9pOry267gXYaBA7Sf8VroodHqJcrcBGUnXrCkVldf1SnZCQyYgHHeCZBkOgtociuedS5g5IddGUkSuCc5ZBRpYZD";
+		String MY_AUTH_TOKEN = "CAACEdEose0cBAIYUFYwhAPUME3wefVkbqcEOcYMB27ZBjSmKP5yxcAGZC5OTP0aIPeZCuZBPXe0zapnMOJVhsRkXujooVVep8XPWJpsgIf9ZAYtF6c12y07eqpOpAnQOu50ZBRC9ChNr2ZCjkT4GKTHySEWYZAG1ZBeaUAjMKEjg0N65zsUjoelP7uttAZCn3eq3kZD";
 		FacebookClient facebookClient = new DefaultFacebookClient(MY_AUTH_TOKEN);
 		FacebookSearch fbSearch = new FacebookSearch(facebookClient);
 		

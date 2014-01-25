@@ -11,17 +11,25 @@ public class LocationHistorySetEntry implements Comparable<LocationHistorySetEnt
 	 */
 	private String name;							// User name
 	private String current;							// User current location
+	private float current_lat;						// User current latitude
+	private float current_long;						// User current longitude
 	private String hometown;						// User hometown
+	private float hometown_lat;						// User hometown latitude
+	private float hometown_long;					// User hometown longitude
 	private TreeSet<LocationHistoryEntry> treeSet;	// Set of locations user has been to
 	
 	/*
 	 * Constructors
 	 */
 	public LocationHistorySetEntry() {}
-	public LocationHistorySetEntry(String name, String current, String hometown, TreeSet<LocationHistoryEntry> treeSet) {
+	public LocationHistorySetEntry(String name, String current, float curLat, float curLong, String hometown, float homeLat, float homeLong, TreeSet<LocationHistoryEntry> treeSet) {
 		this.name = name;
 		this.current = current;
 		this.hometown = hometown;
+		this.current_lat = curLat;
+		this.current_long = curLong;
+		this.hometown_lat = homeLat;
+		this.hometown_long = homeLong;
 		this.treeSet = treeSet;
 	}
 	
@@ -46,8 +54,20 @@ public class LocationHistorySetEntry implements Comparable<LocationHistorySetEnt
 	public String getCurLocation() {
 		return current;
 	}
+	public float getCurLat() {
+		return current_lat;
+	}
+	public float getCurLong() {
+		return current_long;
+	}
 	public String getHometown() {
 		return hometown;
+	}
+	public float getHomeLat() {
+		return hometown_lat;
+	}
+	public float getHomeLong() {
+		return hometown_long;
 	}
 	public TreeSet<LocationHistoryEntry> getTreeSet() {
 		return treeSet;

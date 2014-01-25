@@ -9,6 +9,7 @@ import java.util.TreeSet;
 import com.fb.Friend;
 import com.fb.common.SearchThread;
 import com.restfb.Connection;
+import com.restfb.Facebook;
 import com.restfb.FacebookClient;
 import com.restfb.Parameter;
 import com.restfb.batch.BatchRequest;
@@ -100,12 +101,6 @@ public class LocationHistoryThread extends SearchThread<LocationHistorySetEntry>
 		
 		// Retrieve Checkin and Photo connections from batch response
 		Connection<Checkin> checkins = new Connection<Checkin>(facebookClient, batchResponses.get(0).getBody(), Checkin.class);
-		//Connection<Photo> photos = new Connection<Photo>(facebookClient, batchResponses.get(1).getBody(), Photo.class);
-		
-		// If friend has no relevant data (no hometown, current location,
-		// checkins, or photos) skip
-		//if (checkins.getData().size() == 0 && user.getLocation() == null && user.getHometown() == null)
-		//	return;
 		
 		// Initialize sorted data structure for storing friend's location
 		// data
@@ -131,14 +126,72 @@ public class LocationHistoryThread extends SearchThread<LocationHistorySetEntry>
 			}
 		}
 		
-		// Save friend's current location or 'unknown' if not found
-		String curLocation = (user.getLocation() != null) ? user.getLocation().getName() : "unknown";
+		String curLocation = "unknown";
+		float curLat = -1, curLong = -1;
+		String hometown = "unknown";
+		float homeLat = -1, homeLong = -1;
+		String query = "SELECT current_location, hometown_location FROM user WHERE uid = " + user.getId();
+		FqlEntry entry = facebookClient.executeFqlQuery(query, FqlEntry.class).get(0);
 		
-		// Save friend's hometown or 'unknown' if not found
-		String hometown = (user.getHometown() != null) ? user.getHometown().getName() : "unknown";
+		System.out.println(user.getId());
+		if (user.getLocation() != null) {
+			curLocation = String.format("%s %s %s", entry.current.city, entry.current.state, entry.current.country);
+			curLat = entry.current.latitude;
+			curLong = entry.current.longitude;
+		}
+		if (user.getHometown() != null) {
+			hometown = String.format("%s %s %s", entry.home.city, entry.home.state, entry.home.country);
+			homeLat = entry.home.latitude;
+			homeLong = entry.home.longitude;
+		}
 		
 		// Add processed entry to output set
-		outputSet.add(new LocationHistorySetEntry(user.getName(), curLocation, hometown, treeSet));
+		outputSet.add(new LocationHistorySetEntry(user.getName(), curLocation, curLat, curLong, hometown, homeLat, homeLong, treeSet));
 		
+	}
+	
+	private static class FqlEntry {
+		@Facebook("current_location")
+		FqlCurrent current;
+		@Facebook("hometown_location")
+		FqlHome home;
+		
+		public String toString() {
+			return String.format("Home:%s Current:%s", home.toString(), current.toString());
+		}
+	}
+	
+	private static class FqlCurrent {
+		@Facebook("city")
+		String city;
+		@Facebook("state")
+		String state;
+		@Facebook("country")
+		String country;
+		@Facebook("latitude")
+		float latitude;
+		@Facebook("longitude")
+		float longitude;
+		
+		public String toString() {
+			return String.format("%s, %s %s <%f, %f>", city, state, country, latitude, longitude);
+		}
+	}
+	
+	private static class FqlHome {
+		@Facebook("city")
+		String city;
+		@Facebook("state")
+		String state;
+		@Facebook("country")
+		String country;
+		@Facebook("latitude")
+		float latitude;
+		@Facebook("longitude")
+		float longitude;
+		
+		public String toString() {
+			return String.format("%s, %s %s <%f, %f>", city, state, country, latitude, longitude);
+		}
 	}
 }
