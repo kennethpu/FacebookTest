@@ -1,6 +1,9 @@
 package com.fb;
 import java.io.BufferedReader;
+import java.io.FileNotFoundException;
 import java.io.InputStreamReader;
+import java.io.PrintWriter;
+import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -10,25 +13,20 @@ import java.util.List;
 import java.util.SortedSet;
 import java.util.TreeSet;
 
-
+import com.fb.location_history.LocationHistoryEntry;
+import com.fb.location_history.LocationHistorySet;
+import com.fb.location_history.LocationHistorySetEntry;
+import com.fb.location_history.LocationHistoryThread;
 import com.restfb.Connection;
 import com.restfb.DefaultJsonMapper;
 import com.restfb.FacebookClient;
 import com.restfb.JsonMapper;
 import com.restfb.Parameter;
 import com.restfb.batch.BatchRequest;
-import com.restfb.batch.BatchResponse;
 import com.restfb.batch.BatchRequest.BatchRequestBuilder;
-import com.restfb.types.Checkin;
-import com.restfb.types.Photo;
+import com.restfb.batch.BatchResponse;
 import com.restfb.types.StatusMessage;
 import com.restfb.types.User;
-
-import com.fb.ExecuteSearch;
-import com.fb.location_history.LocationHistoryEntry;
-import com.fb.location_history.LocationHistorySet;
-import com.fb.location_history.LocationHistorySetEntry;
-import com.fb.location_history.LocationHistoryThread;
 
 public class FacebookSearch {
 
@@ -98,9 +96,12 @@ public class FacebookSearch {
 	 * - friends_photos 
 	 * - friends_hometown 
 	 * - friends_location
+	 * @throws UnsupportedEncodingException 
+	 * @throws FileNotFoundException 
 	 */
-	public void getFriendLocationHistory() {
-					
+	public void getFriendLocationHistory() throws FileNotFoundException, UnsupportedEncodingException {
+		PrintWriter writer = new PrintWriter("index.html", "UTF-8");
+		
 		System.out.println("#===========================================================");
 		System.out.println("# getFriendLocationHistory()");
 		System.out.println("#===========================================================");
@@ -207,6 +208,31 @@ public class FacebookSearch {
 				System.out.printf("                      [Hometown] %-75s <%f, %f>\n", entry.getHometown(), entry.getHomeLat(), entry.getHomeLong());
 			}
 		}
+		writer.printf("<html>\n" +
+				"  <head>\n" + 
+				"    <title>Simple Map</title>\n" + 
+				"    <meta name=\"viewport\" content=\"initial-scale=1.0, user-scalable=no\">\n" +
+				"    <meta charset=\"utf-8\">\n" +
+				"    <style>\n" +
+				"      html, body, #map-canvas {\n" +
+				"        height: 100%%;\n" + 
+				"        margin: 0px;\n" +
+				"        padding: 0p\n" +
+				"      }\n" +
+				"    </style>\n" +
+				"    <script src=\"https://maps.googleapis.com/maps/api/js?v=3.exp&sensor=false\"></script>\n" +
+				"    <script>\n\n" +
+
+				"function initialize() { \n" +
+				"  var mapOptions = {\n" +
+				"    center: new google.maps.LatLng(%f, %f),\n" +
+				"    zoom: 8,\n" +
+				"    mapTypeId: google.maps.MapTypeId.TERRAIN\n" +
+				"  };\n" +
+
+				"  var map = new google.maps.Map(document.getElementById('map-canvas'),\n" +
+				"      mapOptions);\n", outputSet.last().getCurLat(), outputSet.last().getCurLong());
+
 		
 		System.out.printf(
 		"<html>\n" +
@@ -238,7 +264,9 @@ public class FacebookSearch {
 		int tail = 1;
 		for (LocationHistorySetEntry lhs_entry : outputSet) {
 			System.out.printf("  var lineCoords%d = [\n", tail);
+			writer.printf("  var lineCoords%d = [\n", tail);
 			System.out.printf("    new google.maps.LatLng(%f, %f),\n", lhs_entry.getCurLat(), lhs_entry.getCurLong());
+			writer.printf("    new google.maps.LatLng(%f, %f),\n", lhs_entry.getCurLat(), lhs_entry.getCurLong());
 			
 			LocationHistoryEntry lastLoc = null;
 			for (LocationHistoryEntry lh_entry : lhs_entry.getTreeSet()) {
@@ -248,11 +276,14 @@ public class FacebookSearch {
 					continue;
 				lastLoc = lh_entry;
 				System.out.printf("    new google.maps.LatLng(%f, %f),\n", lh_entry.getLatitude(), lh_entry.getLongitude());
+				writer.printf("    new google.maps.LatLng(%f, %f),\n", lh_entry.getLatitude(), lh_entry.getLongitude());
 			}
 
 			System.out.printf("    new google.maps.LatLng(%f, %f)\n", lhs_entry.getHomeLat(), lhs_entry.getHomeLong());
+			writer.printf("    new google.maps.LatLng(%f, %f)\n", lhs_entry.getHomeLat(), lhs_entry.getHomeLong());
 			
 			System.out.printf("  ];\n");
+			writer.printf("  ];\n");
 			
 			System.out.printf(
 			"  var line%d = new google.maps.Polyline({\n" +
@@ -261,6 +292,13 @@ public class FacebookSearch {
 			"    strokeColor: '%s'\n" +
 			"  });\n", tail, tail, colors[tail%colors.length]);
 			
+			writer.printf(
+					"  var line%d = new google.maps.Polyline({\n" +
+					"    path: lineCoords%d,\n" +
+					"    map: map,\n" +
+					"    strokeColor: '%s'\n" +
+					"  });\n", tail, tail, colors[tail%colors.length]);
+			
 			System.out.printf(
 			"var marker%d_c = new google.maps.Marker({\n" +
 			"    icon: 'http://maps.google.com/mapfiles/ms/icons/%s-dot.png',\n" +
@@ -268,6 +306,13 @@ public class FacebookSearch {
 			"    map: map,\n" +
 			"    title:\"[Current] %s\"\n" + 
 			"});\n", tail, colors[tail%colors.length], lhs_entry.getCurLat(), lhs_entry.getCurLong(), lhs_entry.getCurLocation()); 
+			writer.printf(
+					"var marker%d_c = new google.maps.Marker({\n" +
+					"    icon: 'http://maps.google.com/mapfiles/ms/icons/%s-dot.png',\n" +
+					"    position: new google.maps.LatLng(%f, %f),\n" +
+					"    map: map,\n" +
+					"    title:\"[Current] %s\"\n" + 
+					"});\n", tail, colors[tail%colors.length], lhs_entry.getCurLat(), lhs_entry.getCurLong(), lhs_entry.getCurLocation()); 
 			
 			int tail2 = 1;
 			lastLoc = null;
@@ -284,6 +329,13 @@ public class FacebookSearch {
 				"    map: map,\n" +
 				"    title:\"[%s] %s%s%s %s\"\n" + 
 				"});\n", tail, tail2++, colors[tail%colors.length], lh_entry.getLatitude(), lh_entry.getLongitude(), lh_entry.getTime(), lh_entry.getName(), lh_entry.getCity(), lh_entry.getState(), lh_entry.getCountry()); 
+				writer.printf(
+						"var marker%d_%d = new google.maps.Marker({\n" +
+						"    icon: 'http://maps.google.com/mapfiles/ms/icons/%s.png',\n" +
+						"    position:new google.maps.LatLng(%f, %f),\n" +
+						"    map: map,\n" +
+						"    title:\"[%s] %s%s%s %s\"\n" + 
+						"});\n", tail, tail2++, colors[tail%colors.length], lh_entry.getLatitude(), lh_entry.getLongitude(), lh_entry.getTime(), lh_entry.getName(), lh_entry.getCity(), lh_entry.getState(), lh_entry.getCountry());
 			}
 
 			System.out.printf(
@@ -293,6 +345,13 @@ public class FacebookSearch {
 			"    map: map,\n" +
 			"    title:\"[Hometown] %s\"\n" + 
 			"});\n", tail, colors[tail++%colors.length], lhs_entry.getHomeLat(), lhs_entry.getHomeLong(), lhs_entry.getHometown()); 
+			writer.printf(
+					"var marker%d_h = new google.maps.Marker({\n" +
+					"    icon: 'http://maps.google.com/mapfiles/ms/icons/%s-dot.png',\n" +
+					"    position: new google.maps.LatLng(%f, %f),\n" +
+					"    map: map,\n" +
+					"    title:\"[Hometown] %s\"\n" + 
+					"});\n", tail, colors[tail++%colors.length], lhs_entry.getHomeLat(), lhs_entry.getHomeLong(), lhs_entry.getHometown()); 
 		}
 		
 		System.out.printf(
@@ -305,9 +364,20 @@ public class FacebookSearch {
 		"  </body>\n" +
 		"</html>\n");
 		
+		writer.printf(
+				"}\n" +
+				"google.maps.event.addDomListener(window, 'load', initialize);\n" +
+				"    </script>\n" +
+				"  </head>\n" +
+				"  <body>\n" +
+				"    <div id=\"map-canvas\"></div>\n" +
+				"  </body>\n" +
+				"</html>\n");
+		writer.close();
 		long end = System.currentTimeMillis();
 		long duration = (end-start)/1000;
 		System.out.printf("Duration: %ds\n", duration);
+		
 	}
 
 	/**

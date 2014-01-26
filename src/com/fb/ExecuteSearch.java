@@ -1,7 +1,9 @@
 package com.fb;
 
 import java.io.BufferedReader;
+import java.io.FileNotFoundException;
 import java.io.InputStreamReader;
+import java.io.UnsupportedEncodingException;
 import java.util.HashMap;
 
 import com.restfb.Connection;
@@ -19,7 +21,7 @@ public class ExecuteSearch {
 	 */
 	public static void main(String[] args) {
 		//Site to get auth_token https://developers.facebook.com/tools/explorer
-		String MY_AUTH_TOKEN = "CAACEdEose0cBAJTRCKkZA7y9E8wjrrWwFZCixiQJSoPY3DZCQrEHgEf9i1SWzNnLm55kbz3ULfUxM6CIWZAVKn6uLb4ZBEquGUy2Vsz6IR4eZAtuKS9nZBKhosHxR3CVQVWQ2iMTUoDCFb8lm7qc4uxCUxsaUZCS2eSc2QEl5odvAR7ZB0Jr89FlVE9Tt8YaWaHYZD";
+		String MY_AUTH_TOKEN = "CAACEdEose0cBAJ1RVDcH52zVNPqkeXYvV1F1fSGPH6lDZAZBLhNnIVh0mH7muPryZCxkNZC6kebdENwoMaD3OZCCh1WPHIfhqRuFWyNyJyQn4ihf4T8L5rDSDTXZBYIRmn8fLrxN0oIwb4RHvov9uJE8BsFZBoRWIYtBpOpR2HAjZCZAHtQ1zJA7KZAlOfFL0ZAHjP3Mlq3CXWb8AZDZD";
 		FacebookClient facebookClient = new DefaultFacebookClient(MY_AUTH_TOKEN);
 		FacebookSearch fbSearch = new FacebookSearch(facebookClient);
 		
@@ -97,7 +99,15 @@ public class ExecuteSearch {
 				break;
 			case 3:
 				try {
-					fbSearch.getFriendLocationHistory();
+					try {
+						fbSearch.getFriendLocationHistory();
+					} catch (FileNotFoundException e) {
+						// TODO Auto-generated catch block
+						e.printStackTrace();
+					} catch (UnsupportedEncodingException e) {
+						// TODO Auto-generated catch block
+						e.printStackTrace();
+					}
 				} catch (FacebookOAuthException e) {
 					System.out.println("ERROR: Authorization Token expired! Must request new token.");
 					loop = false;
