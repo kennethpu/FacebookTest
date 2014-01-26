@@ -238,7 +238,7 @@ public class FacebookSearch {
 		int tail = 1;
 		for (LocationHistorySetEntry lhs_entry : outputSet) {
 			System.out.printf("  var lineCoords%d = [\n", tail);
-			System.out.printf("    new google.maps.LatLng(%f, %f),\n", lhs_entry.getHomeLat(), lhs_entry.getHomeLong());
+			System.out.printf("    new google.maps.LatLng(%f, %f),\n", lhs_entry.getCurLat(), lhs_entry.getCurLong());
 			
 			LocationHistoryEntry lastLoc = null;
 			for (LocationHistoryEntry lh_entry : lhs_entry.getTreeSet()) {
@@ -249,8 +249,8 @@ public class FacebookSearch {
 				lastLoc = lh_entry;
 				System.out.printf("    new google.maps.LatLng(%f, %f),\n", lh_entry.getLatitude(), lh_entry.getLongitude());
 			}
-			
-			System.out.printf("    new google.maps.LatLng(%f, %f)\n", lhs_entry.getCurLat(), lhs_entry.getCurLong());
+
+			System.out.printf("    new google.maps.LatLng(%f, %f)\n", lhs_entry.getHomeLat(), lhs_entry.getHomeLong());
 			
 			System.out.printf("  ];\n");
 			
@@ -262,12 +262,12 @@ public class FacebookSearch {
 			"  });\n", tail, tail, colors[tail%colors.length]);
 			
 			System.out.printf(
-			"var markerc = new google.maps.Marker({\n" +
+			"var marker%d_c = new google.maps.Marker({\n" +
 			"    icon: 'http://maps.google.com/mapfiles/ms/icons/%s-dot.png',\n" +
 			"    position: new google.maps.LatLng(%f, %f),\n" +
 			"    map: map,\n" +
 			"    title:\"[Current] %s\"\n" + 
-			"});\n", colors[tail%colors.length], lhs_entry.getCurLat(), lhs_entry.getCurLong(), lhs_entry.getCurLocation()); 
+			"});\n", tail, colors[tail%colors.length], lhs_entry.getCurLat(), lhs_entry.getCurLong(), lhs_entry.getCurLocation()); 
 			
 			int tail2 = 1;
 			lastLoc = null;
@@ -278,21 +278,21 @@ public class FacebookSearch {
 					continue;
 				lastLoc = lh_entry;
 				System.out.printf(
-				"var marker%d = new google.maps.Marker({\n" +
+				"var marker%d_%d = new google.maps.Marker({\n" +
 				"    icon: 'http://maps.google.com/mapfiles/ms/icons/%s.png',\n" +
 				"    position:new google.maps.LatLng(%f, %f),\n" +
 				"    map: map,\n" +
 				"    title:\"[%s] %s%s%s %s\"\n" + 
-				"});\n", tail2++, colors[tail%colors.length], lh_entry.getLatitude(), lh_entry.getLongitude(), lh_entry.getTime(), lh_entry.getName(), lh_entry.getCity(), lh_entry.getState(), lh_entry.getCountry()); 
+				"});\n", tail, tail2++, colors[tail%colors.length], lh_entry.getLatitude(), lh_entry.getLongitude(), lh_entry.getTime(), lh_entry.getName(), lh_entry.getCity(), lh_entry.getState(), lh_entry.getCountry()); 
 			}
 
 			System.out.printf(
-			"var markerh = new google.maps.Marker({\n" +
+			"var marker%d_h = new google.maps.Marker({\n" +
 			"    icon: 'http://maps.google.com/mapfiles/ms/icons/%s-dot.png',\n" +
 			"    position: new google.maps.LatLng(%f, %f),\n" +
 			"    map: map,\n" +
 			"    title:\"[Hometown] %s\"\n" + 
-			"});\n", colors[tail++%colors.length], lhs_entry.getHomeLat(), lhs_entry.getHomeLong(), lhs_entry.getHometown()); 
+			"});\n", tail, colors[tail++%colors.length], lhs_entry.getHomeLat(), lhs_entry.getHomeLong(), lhs_entry.getHometown()); 
 		}
 		
 		System.out.printf(
