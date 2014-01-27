@@ -223,7 +223,13 @@ public class FacebookSearch {
 		"    </style>\n" +
 		"    <script src=\"https://maps.googleapis.com/maps/api/js?v=3.exp&sensor=false\"></script>\n" +
 		"    <script>\n\n" +
-
+		"var map;\n" +
+		"var infowindow;\n");
+		int j = 1;
+		for (LocationHistorySetEntry lhs_entry : outputSet) {
+			System.out.printf("var markers%d = new Array();\n", j++);
+		}
+		System.out.printf(
 		"function initialize() { \n" +
 		"  var mapOptions = {\n" +
 		"    center: new google.maps.LatLng(%f, %f),\n" +
@@ -231,13 +237,13 @@ public class FacebookSearch {
 		"    mapTypeId: google.maps.MapTypeId.TERRAIN\n" +
 		"  };\n" +
 
-		"  var map = new google.maps.Map(document.getElementById('map-canvas'),\n" +
+		"  map = new google.maps.Map(document.getElementById('map-canvas'),\n" +
 		"      mapOptions);\n", outputSet.last().getCurLat(), outputSet.last().getCurLong());
 		
 		String[] colors = {"yellow", "red", "blue", "green", "orange", "pink", "purple"};
 		int tail = 1;
 		for (LocationHistorySetEntry lhs_entry : outputSet) {
-			System.out.printf("  var lineCoords%d = [\n", tail);
+			/*System.out.printf("  var lineCoords%d = [\n", tail);
 			System.out.printf("    new google.maps.LatLng(%f, %f),\n", lhs_entry.getCurLat(), lhs_entry.getCurLong());
 			
 			LocationHistoryEntry lastLoc = null;
@@ -260,17 +266,18 @@ public class FacebookSearch {
 			"    map: map,\n" +
 			"    strokeColor: '%s'\n" +
 			"  });\n", tail, tail, colors[tail%colors.length]);
-			
+			*/
 			System.out.printf(
-			"var marker%d_c = new google.maps.Marker({\n" +
+			"  var marker%d_c = new google.maps.Marker({\n" +
 			"    icon: 'http://maps.google.com/mapfiles/ms/icons/%s-dot.png',\n" +
 			"    position: new google.maps.LatLng(%f, %f),\n" +
 			"    map: map,\n" +
 			"    title:\"[Current] %s\"\n" + 
-			"});\n", tail, colors[tail%colors.length], lhs_entry.getCurLat(), lhs_entry.getCurLong(), lhs_entry.getCurLocation()); 
+			"  });\n" + 
+			"  markers%d[0] = marker%d_c;\n", tail, colors[tail%colors.length], lhs_entry.getCurLat(), lhs_entry.getCurLong(), lhs_entry.getCurLocation(), tail, tail); 
 			
 			int tail2 = 1;
-			lastLoc = null;
+			LocationHistoryEntry lastLoc = null;
 			for (LocationHistoryEntry lh_entry : lhs_entry.getTreeSet()) {
 				if (lastLoc != null
 						&& (lh_entry.getName().equals(lastLoc.getName()))
@@ -278,25 +285,87 @@ public class FacebookSearch {
 					continue;
 				lastLoc = lh_entry;
 				System.out.printf(
-				"var marker%d_%d = new google.maps.Marker({\n" +
+				"  var marker%d_%d = new google.maps.Marker({\n" +
 				"    icon: 'http://maps.google.com/mapfiles/ms/icons/%s.png',\n" +
 				"    position:new google.maps.LatLng(%f, %f),\n" +
 				"    map: map,\n" +
 				"    title:\"[%s] %s%s%s %s\"\n" + 
-				"});\n", tail, tail2++, colors[tail%colors.length], lh_entry.getLatitude(), lh_entry.getLongitude(), lh_entry.getTime(), lh_entry.getName(), lh_entry.getCity(), lh_entry.getState(), lh_entry.getCountry()); 
+				"  });\n" + 
+				"  markers%d[%d] = marker%d_%d;\n", tail, tail2, colors[tail%colors.length], lh_entry.getLatitude(), lh_entry.getLongitude(), lh_entry.getTime(), 
+				lh_entry.getName(), lh_entry.getCity(), lh_entry.getState(), lh_entry.getCountry(), tail, tail2, tail, tail2++); 
 			}
 
 			System.out.printf(
-			"var marker%d_h = new google.maps.Marker({\n" +
+			"  var marker%d_h = new google.maps.Marker({\n" +
 			"    icon: 'http://maps.google.com/mapfiles/ms/icons/%s-dot.png',\n" +
 			"    position: new google.maps.LatLng(%f, %f),\n" +
 			"    map: map,\n" +
 			"    title:\"[Hometown] %s\"\n" + 
-			"});\n", tail, colors[tail++%colors.length], lhs_entry.getHomeLat(), lhs_entry.getHomeLong(), lhs_entry.getHometown()); 
+			"  });\n" +
+			"  markers%d[%d] = marker%d_h;\n", tail, colors[tail%colors.length], lhs_entry.getHomeLat(), lhs_entry.getHomeLong(), lhs_entry.getHometown(), tail, tail2, tail++); 
 		}
 		
 		System.out.printf(
-		"}\n" +
+		"  var count = markers1.length-1;\n" +
+		"  infowindow = new google.maps.InfoWindow();\n" +
+		"  infowindow.setContent(markers1[count].getTitle());\n" +
+		"  map.panTo(markers1[count].getPosition());\n" +
+		"  zoomIn(15, map.getZoom());\n" +
+		"  markers1[count].setAnimation(google.maps.Animation.BOUNCE);\n" +
+		"  infowindow.open(map, markers1[count]);\n" +
+		"  google.maps.event.addListenerOnce(map, 'idle', function () {\n" +
+		"    setTimeout(function(){autoPan(count)}, 3000);\n" +
+		"  });\n" +
+		"}\n\n" +
+		"function autoPan(count) {\n" +
+		"  var oldMarker = markers1[count];\n" + 
+		"  var newMarker = markers1[((count + markers1.length - 1) %% markers1.length)];\n" +
+		"  if (map.getBounds().contains(newMarker.getPosition())) {\n" +
+		"    infowindow.close();\n" +
+		"    infowindow.setContent(newMarker.getTitle());\n" +
+		"    map.panTo(newMarker.getPosition());\n" +
+		"    oldMarker.setAnimation(null);\n" +
+		"    newMarker.setZIndex(google.maps.Marker.MAX_ZINDEX + 1);\n" +
+		"    newMarker.setAnimation(google.maps.Animation.BOUNCE);\n" +
+		"    infowindow.open(map, newMarker);\n" +
+		"    setTimeout(function(){autoPan(((count + markers1.length - 1) %% markers1.length))}, 3000);\n" +
+		"  } else {\n" +
+		"    oldMarker.setAnimation(null);\n" +
+		"    infowindow.close();\n" +
+		"    zoomOut(newMarker, map.getZoom());\n" +
+		"    google.maps.event.addListenerOnce(map, 'idle', function () {\n" +
+		"      map.panTo(newMarker.getPosition());\n" +
+		"      zoomIn(15, map.getZoom());\n" +
+		"      google.maps.event.addListenerOnce(map, 'idle', function () {\n" +
+		"        infowindow.setContent(newMarker.getTitle());\n" +
+		"        newMarker.setZIndex(google.maps.Marker.MAX_ZINDEX + 1);\n" +
+		"        newMarker.setAnimation(google.maps.Animation.BOUNCE);\n" +
+		"        infowindow.open(map, newMarker);\n" +
+		"        setTimeout(function(){autoPan(((count + markers1.length - 1) %% markers1.length))}, 3000);\n" +
+		"      });\n" +
+		"    });\n" +
+		"  }\n" +
+		"}\n\n" +
+		"function zoomIn(target, cnt) {\n" +
+		"  if (cnt >= target) {\n" +
+		"    return;\n" +
+		"  } else {\n" +
+		"    google.maps.event.addListenerOnce(map, 'zoom_changed', function(){\n" +
+		"      zoomIn(target, cnt + 1);\n" +
+		"    });\n" +
+		"    setTimeout(function(){map.setZoom(cnt)}, 80);\n" +
+		"  }\n" +
+		"}\n" +  
+		"function zoomOut(newMarker, cnt) {\n" +
+		"  if (map.getBounds().contains(newMarker.getPosition())) {\n" +
+		"    return;\n" +
+		"  } else {\n" +
+		"    google.maps.event.addListenerOnce(map, 'zoom_changed', function(){\n" +
+		"      zoomOut(newMarker, cnt - 1);\n" +
+		"    });\n" +
+		"    setTimeout(function(){map.setZoom(cnt)}, 80);\n" +
+		"  }\n" + 
+		"}\n" +  
 		"google.maps.event.addDomListener(window, 'load', initialize);\n" +
 		"    </script>\n" +
 		"  </head>\n" +
